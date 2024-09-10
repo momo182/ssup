@@ -1,0 +1,374 @@
+package gateway
+
+import (
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net"
+	"os"
+	"os/exec"
+	"os/user"
+	"path/filepath"
+	"strings"
+	"sync"
+
+	"github.com/clok/kemba"
+	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/lobby"
+	spass "github.com/momo182/ssup/src/shared/checksshpass"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
+)
+
+// Client is a wrapper over the SSH connection/sessions.
+type SSHClient struct {
+	conn         *ssh.Client
+	sess         *ssh.Session
+	User         string
+	Host         string
+	Password     string
+	remoteStdin  io.WriteCloser
+	remoteStdout io.Reader
+	remoteStderr io.Reader
+	connOpened   bool
+	sessOpened   bool
+	running      bool
+	Env          string //export FOO="bar"; export BAR="baz";
+	Color        string
+}
+
+type ErrConnect struct {
+	User   string
+	Host   string
+	Reason string
+}
+
+func (e ErrConnect) Error() string {
+	return fmt.Sprintf(`Connect("%v@%v"): %v`, e.User, e.Host, e.Reason)
+}
+
+// parseHost parses and normalizes <user>@<host:port> from a given string.
+func (c *SSHClient) parseHost(host string) error {
+	c.Host = host
+
+	// Remove extra "ssh://" schema
+	if len(c.Host) > 6 && c.Host[:6] == "ssh://" {
+		c.Host = c.Host[6:]
+	}
+
+	// Split by the last "@", since there may be an "@" in the username.
+	if at := strings.LastIndex(c.Host, "@"); at != -1 {
+		c.User = c.Host[:at]
+		c.Host = c.Host[at+1:]
+	}
+
+	// Add default user, if not set
+	if c.User == "" {
+		u, err := user.Current()
+		if err != nil {
+			return err
+		}
+		c.User = u.Username
+	}
+
+	if strings.Index(c.Host, "/") != -1 {
+		return ErrConnect{c.User, c.Host, "unexpected slash in the host URL"}
+	}
+
+	// Add default port, if not set
+	if strings.Index(c.Host, ":") == -1 {
+		c.Host += ":22"
+	}
+
+	return nil
+}
+
+var initAuthMethodOnce sync.Once
+var authMethods []ssh.AuthMethod
+
+// initAuthMethod initiates SSH authentication method.
+// initAuthMethod initiates SSH authentication method.
+func initAuthMethod() {
+	l := kemba.New("gateway:ssh > initAuthMethod").Printf
+	l("initializing SSH authentication method")
+	var signers []ssh.Signer
+
+	// If there's a running SSH Agent, try to use its Private keys.
+	l("check ssh agent is running")
+	sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+	if err == nil {
+		l("using SSH Agent")
+		agent := agent.NewClient(sock)
+		signers, _ = agent.Signers()
+	}
+
+	// Try to read user's SSH private keys from the standard paths.
+	l("check if user has SSH private keys")
+	files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
+	for _, file := range files {
+		if strings.HasSuffix(file, ".pub") {
+			continue // Skip public keys.
+		}
+		data, err := ioutil.ReadFile(file)
+		if err != nil {
+			continue
+		}
+		signer, err := ssh.ParsePrivateKey(data)
+		if err != nil {
+			continue
+		}
+		l("Using SSH private key: %s", file)
+		signers = append(signers, signer)
+
+	}
+	l("found %v SSH signers", len(signers))
+	auth := ssh.PublicKeys(signers...)
+	lobby.Lobby.KeyAuth = &auth
+	l("done initializing SSH authentication method")
+}
+
+// SSHDialFunc can dial an ssh server and return a client
+type SSHDialFunc func(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error)
+
+// Connect creates SSH connection to a specified host.
+// It expects the host of the form "[ssh://]host[:port]".
+func (c *SSHClient) Connect(host entity.NetworkHost) error {
+	return c.ConnectWith(host, ssh.Dial)
+}
+
+// ConnectWith creates a SSH connection to a specified host. It will use dialer to establish the
+// connection.
+// TODO: Split Signers to its own method.
+func (c *SSHClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) error {
+	if c.connOpened {
+		return fmt.Errorf("Already connected")
+	}
+
+	var authMethods []ssh.AuthMethod
+	initAuthMethodOnce.Do(initAuthMethod)
+	authMethods = spass.CheckPasswordAuth(authMethods, host)
+
+	err := c.parseHost(host.Host)
+	if err != nil {
+		return err
+	}
+
+	config := &ssh.ClientConfig{
+		User:            c.User,
+		Auth:            authMethods,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	c.conn, err = dialer("tcp", c.Host, config)
+	if err != nil {
+		return ErrConnect{c.User, c.Host, err.Error()}
+	}
+	c.connOpened = true
+
+	return nil
+}
+
+// Run runs the task.Run command remotely on c.host.
+func (c *SSHClient) Run(task *entity.Task) error {
+	if c.running {
+		return fmt.Errorf("Session already running")
+	}
+	if c.sessOpened {
+		return fmt.Errorf("Session already connected")
+	}
+
+	sess, err := c.conn.NewSession()
+	if err != nil {
+		return err
+	}
+
+	c.remoteStdin, err = sess.StdinPipe()
+	if err != nil {
+		return err
+	}
+
+	c.remoteStdout, err = sess.StdoutPipe()
+	if err != nil {
+		return err
+	}
+
+	c.remoteStderr, err = sess.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	if task.TTY {
+		// Set up terminal modes
+		modes := ssh.TerminalModes{
+			ssh.ECHO:          0,     // disable echoing
+			ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
+			ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+		}
+		// Request pseudo terminal
+		if err := sess.RequestPty("xterm", 80, 40, modes); err != nil {
+			return entity.ErrTask{task, fmt.Sprintf("request for pseudo terminal failed: %s", err)}
+		}
+	}
+
+	// Start the remote command.
+	if err := sess.Start(c.Env + task.Run); err != nil {
+		return entity.ErrTask{task, err.Error()}
+	}
+
+	c.sess = sess
+	c.sessOpened = true
+	c.running = true
+	return nil
+}
+
+// Wait waits until the remote command finishes and exits.
+// It closes the SSH session.
+func (c *SSHClient) Wait() error {
+	if !c.running {
+		return fmt.Errorf("Trying to wait on stopped session")
+	}
+
+	err := c.sess.Wait()
+	c.sess.Close()
+	c.running = false
+	c.sessOpened = false
+
+	return err
+}
+
+// DialThrough will create a new connection from the ssh server sc is connected to. DialThrough is an SSHDialer.
+func (sc *SSHClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	conn, err := sc.conn.Dial(net, addr)
+	if err != nil {
+		return nil, err
+	}
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	if err != nil {
+		return nil, err
+	}
+	return ssh.NewClient(c, chans, reqs), nil
+
+}
+
+// Close closes the underlying SSH connection and session.
+func (c *SSHClient) Close() error {
+	if c.sessOpened {
+		c.sess.Close()
+		c.sessOpened = false
+	}
+	if !c.connOpened {
+		return fmt.Errorf("Trying to close the already closed connection")
+	}
+
+	err := c.conn.Close()
+	c.connOpened = false
+	c.running = false
+
+	return err
+}
+
+func (c *SSHClient) Stdin() io.WriteCloser {
+	return c.remoteStdin
+}
+
+func (c *SSHClient) Stderr() io.Reader {
+	return c.remoteStderr
+}
+
+func (c *SSHClient) Stdout() io.Reader {
+	return c.remoteStdout
+}
+
+func (c *SSHClient) Prefix() (string, int) {
+	host := c.User + "@" + c.Host + " | "
+	return c.Color + host + entity.ResetColor, len(host)
+}
+
+func (c *SSHClient) Write(p []byte) (n int, err error) {
+	if c.remoteStdin == nil {
+		return 0, fmt.Errorf("failed write, session is not open")
+	}
+	return c.remoteStdin.Write(p)
+}
+
+func (c *SSHClient) WriteClose() error {
+	if c.remoteStdin == nil {
+		return fmt.Errorf("failed close, session is not open")
+	}
+	return c.remoteStdin.Close()
+}
+
+func (c *SSHClient) Signal(sig os.Signal) error {
+	if !c.sessOpened {
+		return fmt.Errorf("session is not open")
+	}
+
+	switch sig {
+	case os.Interrupt:
+		// TODO: Turns out that .Signal(ssh.SIGHUP) doesn't work for me.
+		// Instead, sending \x03 to the remote session works for me,
+		// which sounds like something that should be fixed/resolved
+		// upstream in the golang.org/x/crypto/ssh pkg.
+		// https://github.com/golang/go/issues/4115#issuecomment-66070418
+		if c.remoteStdin == nil {
+			return fmt.Errorf("failed write signal, session is not open")
+		}
+
+		c.remoteStdin.Write([]byte("\x03"))
+		return c.sess.Signal(ssh.SIGINT)
+	default:
+		return fmt.Errorf("%v not supported", sig)
+	}
+}
+
+// -----------------------------
+// scp part
+// -----------------------------
+
+func (c *SSHClient) Upload(localPath, remotePath string) error {
+	l := kemba.New("sshclient.Upload").Printf
+	// by default assume we are using sshpass
+	binary := []string{"sshpass", "-e"}
+
+	if strings.Contains(c.Host, ":") {
+		l("trimming host port")
+		c.Host = strings.Split(c.Host, ":")[0]
+	}
+
+	remoteHost := c.Host + ":"
+	l("remote host: %s", remoteHost)
+	agrs := []string{"scp", localPath, remoteHost + remotePath}
+
+	// TODO left here, switch 2 rclone
+	// check if sshpass-rs is installed
+	shhpassBinary, e := exec.LookPath("sshpass-rs")
+	if e == nil {
+		l("found sshpass-rs")
+		binary = []string{shhpassBinary, "-e", "SSHPASS", "--"}
+	} else {
+		l("will use plain old sshpass")
+	}
+
+	// run scp command here
+	l("setting password")
+	cmd := exec.Command(binary[0], append(binary[1:], agrs...)...)
+	cmd.Env = append(os.Environ(), "SSHPASS="+c.Password)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	l("about to run command: %v", cmd.Args)
+	e = cmd.Start()
+	if e != nil {
+		l("failed to run command: %v", e)
+		return e
+	} else {
+		l("successfully ran command")
+	}
+
+	e = cmd.Wait()
+	if e != nil {
+		l("failed to wait for command: %v", e)
+		return e
+	}
+	return nil
+}
