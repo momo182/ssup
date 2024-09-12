@@ -1,13 +1,12 @@
 Note
 ========
 
-This a rewrite of https://github.com/pressly/sup in a more "clean acrh" fashion.    
+This a rewrite of https://github.com/pressly/sup in a more "clean acrh" fashion so i could understand and tinker.    
 Made to experiment a bit, so it will diverge for sure.
-As a bonus, hacky password auth was added, set `export SUP_PASSWORD=some_secret`,
-so far this pass will be used for all hosts in active network.
 
-excat commit is:  
-https://github.com/pressly/sup/commit/17c751e8ca547e2ef7fb5b6b2017543cd7172a05 to be more specific.
+exact commit that was forked:  
+- https://github.com/pressly/sup/commit/17c751e8ca547e2ef7fb5b6b2017543cd7172a05 
+to be more specific.
 
 this repo is mostly that code, rearranged based on the ideas from:
 https://www.youtube.com/watch?v=C7MRkqP5NRI  
@@ -17,6 +16,19 @@ Super Stack Up
 ========
 
 Super Stack Up is a simple deployment tool that performs given set of commands on multiple hosts in parallel. It reads Supfile, a YAML configuration file, which defines networks (groups of hosts), commands and targets.
+
+Extensions to original sup
+=========
+
+- added support for `sudo: true` for task
+- added support for SSH password auth
+- added support for short and long form network definitions
+- env vars can use subshell syntax to grab a value
+- password fields can use subshell syntax to grab a value and use plain text value
+- added automatic shellcheck support if you have it in PATH
+- added #source:// directive for task script
+- ssup now changes dir to Supfile location to accomodate use of relative links with #source://
+- all data transfers are now on rclone binary
 
 # Demo
 
@@ -64,6 +76,52 @@ networks:
 ```
 
 `$ sup production COMMAND` will run COMMAND on `api1`, `api2` and `api3` hosts in parallel.
+^^^ plain old way from original sup, at it's minimal form.
+
+### Network mods
+
+Now two forms supported, short and long.
+First, short form:
+
+```yaml
+networks:
+  remote:
+    hosts:
+      - support@10.8.150.2 | P@ssw0rd << tube_foo22
+      # ^       ^          ^ ^        ^  ^
+      # |       |          | |        |  |
+      # user    |          | |        |  |
+      #         host       | password |  |
+      #                    |          |  namespace
+      #                    |          namespace separator
+      #                    password separator
+```
+
+as stated in extensions section, you can swap plain password with
+shell command, like this:
+
+```yaml
+networks:
+  remote1:
+    hosts:
+      - jim@example.com | $(echo "P@ssw0rd") << tube_foo22
+```
+
+```yaml
+networks:
+  remote2:
+    env:
+      foo22: bar414
+    hosts:
+      - host: ssh://jim@example.com
+        # user: root
+        pass: P@ssw0rd
+        tube: ssup_was_here
+        env:
+          HOST_FOO: hello_FOOBAR-44
+```
+
+
 
 ## Command
 
