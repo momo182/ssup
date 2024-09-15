@@ -62,7 +62,7 @@ func (c *LocalhostClient) Run(task *entity.Task) error {
 	}
 
 	if err := c.cmd.Start(); err != nil {
-		return entity.ErrTask{task, err.Error()}
+		return entity.ErrTask{Task: task, Reason: err.Error()}
 	}
 
 	c.running = true
@@ -187,7 +187,7 @@ func (c *LocalhostClient) Download(src, dst string, silent bool) error {
 
 func (c *LocalhostClient) GenerateOnRemote(data []byte) error {
 	l := kemba.New("sshclient.GenerateOnRemote").Printf
-	l("processing:\ndump: FC693B9D-DA60-4DA9-B783-647270E27BBC\n%s", string(addNumbers(data)))
+	l("processing:\ndump: 19E5FE65-20A8-4050-992E-F3FA5A7AFFCF\n%s", string(addNumbers(data)))
 	home, e := os.UserHomeDir()
 	if e != nil {
 		return oops.Trace("C603225E-0928-4613-A4AB-8E0CAE1C4D10").

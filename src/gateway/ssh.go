@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,6 +21,7 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/lobby"
+	svc "github.com/momo182/ssup/src/lobby"
 	spass "github.com/momo182/ssup/src/shared/checksshpass"
 	"github.com/samber/oops"
 	sf "github.com/wissance/stringFormatter"
@@ -97,7 +99,7 @@ var authMethods []ssh.AuthMethod
 // initAuthMethod initiates SSH authentication method.
 // initAuthMethod initiates SSH authentication method.
 func initAuthMethod() {
-	l := kemba.New("gateway:ssh > initAuthMethod").Printf
+	l := kemba.New("gateway::ssh > initAuthMethod").Printf
 	l("initializing SSH authentication method")
 	var signers []ssh.Signer
 
@@ -131,7 +133,7 @@ func initAuthMethod() {
 	}
 	l("found %v SSH signers", len(signers))
 	auth := ssh.PublicKeys(signers...)
-	lobby.Lobby.KeyAuth = &auth
+	svc.Lobby.KeyAuth = &auth
 	l("done initializing SSH authentication method")
 }
 
@@ -148,12 +150,16 @@ func (c *SSHClient) Connect(host entity.NetworkHost) error {
 // connection.
 // TODO: Split Signers to its own method.
 func (c *SSHClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) error {
+	l := kemba.New("gateway::ssh::SSHClient.ConnectWith").Printf
+	l("connecting to %v", host)
+
 	if c.connOpened {
 		return fmt.Errorf("Already connected")
 	}
 
 	var authMethods []ssh.AuthMethod
 	initAuthMethodOnce.Do(initAuthMethod)
+	l("checking password auth")
 	authMethods = spass.CheckPasswordAuth(authMethods, host)
 
 	err := c.parseHost(host.Host)
@@ -161,17 +167,24 @@ func (c *SSHClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) err
 		return err
 	}
 
+	l("creating config")
 	config := &ssh.ClientConfig{
 		User:            c.User,
 		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
+	l("creating ssh client")
 	c.conn, err = dialer("tcp", c.Host, config)
 	if err != nil {
 		return ErrConnect{c.User, c.Host, err.Error()}
 	}
 	c.connOpened = true
+	l("done creating ssh client")
+
+	// add namespace for the host
+	l("adding namespace for host: %v", c.Host)
+	svc.Lobby.Namespaces.Add(c.Host)
 
 	return nil
 }
@@ -180,7 +193,7 @@ func (c *SSHClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) err
 func (c *SSHClient) Run(task *entity.Task) error {
 	//nil check
 	if task == nil {
-		log.Panic("nil task")
+		return errors.New("got nil task")
 	}
 
 	if c.running {
@@ -281,21 +294,34 @@ func (c *SSHClient) Wait() error {
 	l("will run rclone command: %s", envsPull.String())
 	o, e := envsPull.CombinedOutput()
 	if e != nil {
-		return oops.Trace("FD08F4F9-EA36-4330-8B6B-908E272E6B7C").
-			Hint("pulling envs from host").
-			With("output", o).
-			Wrap(e)
+		if envsPull.ProcessState.ExitCode() == 3 {
+			l("ok to skip cat now")
+		} else {
+			return oops.Trace("FD08F4F9-EA36-4330-8B6B-908E272E6B7C").
+				Hint("pulling envs from host").
+				With("output", o).
+				Wrap(e)
+		}
 	}
-	l("output: %s", o)
+	l("output:\n%s", o)
+
+	// TODO add namespace interaction here
+	// svc.Lobby.Namespaces.SetFromEnvString(c.Host, string(o))
+	// data := svc.Lobby.Namespaces.Get(c.Host)
+	// l("data:\n%s", dump.Format(data))
 
 	envsDrop := exec.Command("rclone", "deletefile", remoteName+":"+entity.VARS_TAIL)
 	l("will run rclone command: %s", envsDrop.String())
 	o, e = envsDrop.CombinedOutput()
 	if e != nil {
-		return oops.Trace("DE417902-4D50-4004-8182-711679A63259").
-			Hint("dropping envs from host").
-			With("output", o).
-			Wrap(e)
+		if envsPull.ProcessState.ExitCode() == 3 {
+			l("ok to skip dropping remote env storage now")
+		} else {
+			return oops.Trace("DE417902-4D50-4004-8182-711679A63259").
+				Hint("dropping envs from host").
+				With("output", o).
+				Wrap(e)
+		}
 	}
 
 	l("delete remote")
@@ -545,6 +571,8 @@ func (c *SSHClient) Download(remotePath, localPath string, silent bool) error {
 // GenerateOnRemote basically cats file content to "~/" + entity.TASK_TAIL on remote
 func (c *SSHClient) GenerateOnRemote(data []byte) error {
 	l := kemba.New("sshclient.GenerateOnRemote").Printf
+	oldCmd := string(data)
+	data = []byte(lobby.RegisterCmd + oldCmd)
 	l("processing:\ndump: FC693B9D-DA60-4DA9-B783-647270E27BBC\n%s", string(addNumbers(data)))
 
 	uuid, e := uuid.GenerateUUID()
@@ -647,7 +675,7 @@ func addNumbers(data []byte) []byte {
 
 // buildRemoteCommand constructs the command string to be run on the remote host.
 func (c *SSHClient) buildRemoteCommand(task entity.Task) string {
-	command := task.Run
+	command := lobby.RegisterCmd + task.Run
 	sudo := task.Sudo
 	l := kemba.New("SSHClient.build_remote_command").Printf
 	scriptName := entity.TASK_TAIL
@@ -655,6 +683,14 @@ func (c *SSHClient) buildRemoteCommand(task entity.Task) string {
 	sudoPassword := c.Password
 	Env := c.Env
 
+	// register bash function, injected here, is injected only for non sudo invocations
+	// if sudo is set to true, the command will be wrapped into script
+	// and and remote command will just execute that script
+	//
+	// which means we have to inject the command into a script for sudo invocation too
+	// and that happens to hapen inside
+	// func (c *SSHClient) GenerateOnRemote(data []byte) error
+	// which shares the same code defined in lobby.RegisterCmd
 	l("checking for SUP_SUDO")
 	switch sudo {
 	case true:
@@ -666,7 +702,7 @@ func (c *SSHClient) buildRemoteCommand(task entity.Task) string {
 			"ssup_script_name": scriptName,
 			"vars_tail":        entity.VARS_TAIL,
 		}
-		command = sf.FormatComplex("echo {sudo_pass} | sudo -S bash -c '{env_setup} chmod +x ./{ssup_script_name};bash ./{ssup_script_name}; rm -rf ./*{ssup_script_name}; {export_command} > ./{vars_tail}; chmod 0666 ./{vars_tail}'", data)
+		command = sf.FormatComplex("echo {sudo_pass} | sudo -S bash -c '{env_setup} chmod +x ./{ssup_script_name};bash ./{ssup_script_name}; rm -rf ./*{ssup_script_name}'", data)
 
 		if err := c.GenerateOnRemote([]byte(task.Run)); err != nil {
 			log.Panic("failed to generate remote command", err)
@@ -679,7 +715,7 @@ func (c *SSHClient) buildRemoteCommand(task entity.Task) string {
 			"export_command": exportCmd,
 			"vars_tail":      entity.VARS_TAIL,
 		}
-		command = sf.FormatComplex("{env_setup}{command} {export_command} > ./{vars_tail}", data)
+		command = sf.FormatComplex("{env_setup}{command}", data)
 	}
 	l("command: %s", command)
 

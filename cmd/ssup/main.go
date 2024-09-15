@@ -8,6 +8,7 @@ import (
 	"github.com/clok/kemba"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/gateway/namespace"
 	"github.com/momo182/ssup/src/gateway/shellcheck"
 	svc "github.com/momo182/ssup/src/lobby"
 	"github.com/momo182/ssup/src/usecase"
@@ -41,6 +42,7 @@ func init() {
 	spew.Config.MaxDepth = entity.SPEW_DEPTH
 	svc.Lobby = &svc.ServiceLobby{}
 	svc.Lobby.Shellcheck = &shellcheck.ShellCheck{}
+	svc.Lobby.Namespaces = namespace.New()
 }
 
 func main() {
