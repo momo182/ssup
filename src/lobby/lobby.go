@@ -10,7 +10,7 @@ import (
 type ServiceLobby struct {
 	KeyAuth    *ssh.AuthMethod
 	Shellcheck *shellcheck.ShellCheck
-	Namespaces namespace.Namespace
+	Namespaces *namespace.Namespace
 }
 
 // Lobby holds common serices used by many places in code
@@ -20,16 +20,30 @@ var Lobby *ServiceLobby
 // later to be parsed by ssup for any envs passed inside
 // moved here to reduce code duplication
 var RegisterCmd = `register() {
-local key=$1
-local val=$2
 local dest="$HOME/_ssup_vars.env"
+	
+if [ "$#" -eq 1 ]; then
+    echo "Illegal number of parameters"
+	echo "use $0 key value [namespace]"
+fi
 
 if [ -n "$SUDO_USER" ]; then
 	# shellcheck disable=SC2116
-	local rem_root=$(eval echo "~${SUDO_USER}")
-	local dest="$rem_root/_ssup_vars.env"
+	local PRESUDO_HOME=$(eval echo "~${SUDO_USER}")
+	local dest="$PRESUDO_HOME/_ssup_vars.env"
 fi
 
-echo "${key}=${val}" >> "$dest"
+if [ "$#" -eq 2 ]; then
+	local key=$1
+	local val=$2
+	echo "${key}=${val}" >> "$dest"
+fi
+	
+if [ "$#" -eq 3 ]; then
+	local key=$1
+	local val=$2
+	local namespace="$3"
+	echo "${namespace} ${key}=${val}" >> "$dest"
+fi
 }
 `

@@ -15,7 +15,7 @@ import (
 // ParseInitialArgs parses args and returns network and commands to be run.
 // On error, it prints usage and exits.
 func ParseInitialArgs(conf *entity.Supfile, envFromArgs entity.FlagStringSlice) (*entity.Network, []*entity.Command, error) {
-	l := kemba.New("usecase > ParseInitialArgs").Printf
+	l := kemba.New("usecase::ParseInitialArgs").Printf
 	var commands []*entity.Command
 
 	l("check args len")

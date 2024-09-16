@@ -12,7 +12,6 @@ import (
 // it has methods to get and set env variables from any kind of export (bash,sh)
 type Namespace struct {
 	hostStore map[string]entity.HostNamespace
-	port      int
 }
 
 func NewHostNamespace() entity.HostNamespace {
@@ -27,31 +26,53 @@ func NewHostNamespace() entity.HostNamespace {
 
 }
 
-func New() Namespace {
+func New() *Namespace {
+	result := new(Namespace)
 	store := make(map[string]entity.HostNamespace)
-	return Namespace{
-		hostStore: store,
-	}
+	result.hostStore = store
+	return result
 }
 
 // Get returns HostNamespace for the given host
 func (n *Namespace) Get(host string) entity.HostNamespace {
 	l := kemba.New("gateway::Namespace.Get").Printf
+
+	l("check if host has port and drop port")
+	host = dropHostPort(host)
+
 	l("check if namespace exists for host: " + host)
 	result := n.hostStore[host]
 	l("result: %s", dump.Format(result))
 	return result
 }
 
+func dropHostPort(host string) string {
+	if strings.Contains(host, ":") {
+		host = strings.Split(host, ":")[0]
+	}
+	return host
+}
+
 // add namespace for host
 func (n *Namespace) Add(host string) {
 	l := kemba.New("gateway::Namespace.Add").Printf
+
+	l("check if host has port and drop port")
+	host = dropHostPort(host)
+
 	l("add namespace for host: " + host)
-	n.hostStore[host] = NewHostNamespace()
+	hns := entity.HostNamespace{}
+	store := make(map[string]string)
+	hns.EnvStore = store
+	n.hostStore[host] = hns
 }
 
 func (n *Namespace) ParseEnvs(input string, host string) {
 	l := kemba.New("gateway::Namespace.ParseEnvs").Printf
+
+	l("check if host has port and drop port")
+	host = dropHostPort(host)
+
 	l("parsing envs: %s", input)
 	lines := strings.Split(input, "\n")
 	for _, line := range lines {
@@ -61,6 +82,55 @@ func (n *Namespace) ParseEnvs(input string, host string) {
 		key := line[:equalsLocation]
 		value := strings.TrimSpace(line[equalsLocation+1:])
 		l("key: %s, value: %s", key, value)
+		n.hostStore[host].EnvStore[key] = value
+	}
+}
+
+func (n *Namespace) SetFromEnvString(input string, host string) {
+	l := kemba.New("gateway::Namespace.SetFromEnvString").Printf
+	customNamespace := ""
+
+	l("check if host has port and drop port")
+	host = dropHostPort(host)
+
+	l("setting envs from string: %s", input)
+	lines := strings.Split(input, "\n")
+	for _, line := range lines {
+		l("reading line: %s", line)
+
+		equalsLocation := strings.Index(line, "=")
+		// check we've found any = at all?
+		if equalsLocation == -1 {
+			l("failed to find = inside line: %s", line)
+			continue
+		}
+
+		key := line[:equalsLocation]
+		value := strings.TrimSpace(line[equalsLocation+1:])
+		l("key: %s, value: %s", key, value)
+
+		// check if key has a space in it
+		if strings.Contains(key, " ") {
+			l("key contains space, splitting")
+			customNamespace = strings.Split(key, " ")[0]
+			l("customNamespace: %s", customNamespace)
+		}
+
+		if customNamespace != "" {
+			l("setting env for custom namespace: %s", customNamespace)
+			host = customNamespace
+		}
+
+		l("host store: %s", dump.Format(n))
+		if n.hostStore == nil {
+			l("host store is nil, better create new, should neve happen")
+		}
+
+		if n.hostStore[host].EnvStore == nil {
+			l("host store is nil, better create new")
+			n.hostStore[host] = NewHostNamespace()
+		}
+
 		n.hostStore[host].EnvStore[key] = value
 	}
 }

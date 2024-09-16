@@ -23,7 +23,7 @@ type LocalhostClient struct {
 	stdout  io.Reader
 	stderr  io.Reader
 	running bool
-	Env     string //export FOO="bar"; export BAR="baz";
+	Env     entity.EnvList //export FOO="bar"; export BAR="baz";
 }
 
 func (c *LocalhostClient) Connect(_ entity.NetworkHost) error {
@@ -43,7 +43,7 @@ func (c *LocalhostClient) Run(task *entity.Task) error {
 		return fmt.Errorf("Command already running")
 	}
 
-	cmd := exec.Command("bash", "-c", c.Env+task.Run)
+	cmd := exec.Command("bash", "-c", c.Env.AsExport()+task.Run)
 	c.cmd = cmd
 
 	c.stdout, err = cmd.StdoutPipe()

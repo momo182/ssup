@@ -56,7 +56,7 @@ func SetEnvValues(vars entity.EnvList, initialArgs *entity.InitialArgs) entity.E
 // resolves the values of the environment variables with shell substitution, and
 // returns the merged list of environment variables
 func MergeVars(conf *entity.Supfile, network *entity.Network) entity.EnvList {
-	l := kemba.New("usecase > MergeVars").Printf
+	l := kemba.New("usecase::MergeVars").Printf
 	// Create a new list of environment variables vars of type entity.EnvList
 	var vars entity.EnvList
 

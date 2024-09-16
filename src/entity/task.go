@@ -11,4 +11,5 @@ type Task struct {
 	Clients []ClientFacade
 	TTY     bool
 	Sudo    bool `yaml:"sudo" default:"false"`
+	Env     EnvList
 }

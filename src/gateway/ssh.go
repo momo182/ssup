@@ -18,6 +18,7 @@ import (
 	"github.com/bitfield/script"
 	"github.com/clok/kemba"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/gookit/goutil/dump"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/lobby"
@@ -42,7 +43,7 @@ type SSHClient struct {
 	connOpened   bool
 	sessOpened   bool
 	running      bool
-	Env          string //export FOO="bar"; export BAR="baz";
+	Env          entity.EnvList //export FOO="bar"; export BAR="baz";
 	Color        string
 }
 
@@ -292,27 +293,27 @@ func (c *SSHClient) Wait() error {
 
 	envsPull := exec.Command("rclone", "cat", remoteName+":"+entity.VARS_TAIL)
 	l("will run rclone command: %s", envsPull.String())
-	o, e := envsPull.CombinedOutput()
+	envlines, e := envsPull.CombinedOutput()
 	if e != nil {
 		if envsPull.ProcessState.ExitCode() == 3 {
 			l("ok to skip cat now")
 		} else {
 			return oops.Trace("FD08F4F9-EA36-4330-8B6B-908E272E6B7C").
 				Hint("pulling envs from host").
-				With("output", o).
+				With("output", envlines).
 				Wrap(e)
 		}
 	}
-	l("output:\n%s", o)
+	l("output:\n%s", envlines)
 
 	// TODO add namespace interaction here
-	// svc.Lobby.Namespaces.SetFromEnvString(c.Host, string(o))
-	// data := svc.Lobby.Namespaces.Get(c.Host)
-	// l("data:\n%s", dump.Format(data))
+	svc.Lobby.Namespaces.SetFromEnvString(string(envlines), c.Host)
+	data := svc.Lobby.Namespaces.Get(c.Host)
+	l("data:\n%s", dump.Format(data))
 
 	envsDrop := exec.Command("rclone", "deletefile", remoteName+":"+entity.VARS_TAIL)
 	l("will run rclone command: %s", envsDrop.String())
-	o, e = envsDrop.CombinedOutput()
+	o, e := envsDrop.CombinedOutput()
 	if e != nil {
 		if envsPull.ProcessState.ExitCode() == 3 {
 			l("ok to skip dropping remote env storage now")
@@ -384,7 +385,14 @@ func (c *SSHClient) Stdout() io.Reader {
 
 // Prefix sets prefix for printing
 func (c *SSHClient) Prefix() (string, int) {
-	host := c.User + "@" + c.Host + " | "
+	l := kemba.New("gateway::ssh::SSHClient.Prefix").Printf
+	hostName := c.Host
+	if strings.Contains(c.Host, ":") {
+		hostName = c.Host[:strings.Index(c.Host, ":")]
+	}
+
+	host := c.User + "@" + hostName + " | "
+	l("host: %s", host)
 	return c.Color + host + entity.ResetColor, len(host)
 }
 
@@ -675,15 +683,32 @@ func addNumbers(data []byte) []byte {
 
 // buildRemoteCommand constructs the command string to be run on the remote host.
 func (c *SSHClient) buildRemoteCommand(task entity.Task) string {
+	l := kemba.New("SSHClient.build_remote_command").Printf
+
 	command := lobby.RegisterCmd + task.Run
 	sudo := task.Sudo
-	l := kemba.New("SSHClient.build_remote_command").Printf
 	scriptName := entity.TASK_TAIL
 	exportCmd := "export"
 	sudoPassword := c.Password
 	Env := c.Env
 
-	// register bash function, injected here, is injected only for non sudo invocations
+	if len(task.Env) > 0 {
+		for _, v := range task.Env {
+			l("injecting task env: %s=%s", v.Key, v.Value)
+			Env.Set(v.Key, v.Value)
+		}
+	}
+
+	nsEnvs := lobby.Lobby.Namespaces.Get(c.Host)
+	if len(nsEnvs.EnvStore) > 0 {
+		for k, v := range nsEnvs.EnvStore {
+			l("injecting namespace env: %s=%s", k, v)
+			Env.Set(k, v)
+		}
+
+	}
+
+	// `register` bash function is injected here, injected only for non sudo invocations
 	// if sudo is set to true, the command will be wrapped into script
 	// and and remote command will just execute that script
 	//
@@ -691,13 +716,14 @@ func (c *SSHClient) buildRemoteCommand(task entity.Task) string {
 	// and that happens to hapen inside
 	// func (c *SSHClient) GenerateOnRemote(data []byte) error
 	// which shares the same code defined in lobby.RegisterCmd
+
 	l("checking for SUP_SUDO")
 	switch sudo {
 	case true:
 		l("wrapping command into SUDO block:")
 		data := map[string]any{
 			"sudo_pass":        sudoPassword,
-			"env_setup":        Env,
+			"env_setup":        Env.AsExport(),
 			"export_command":   exportCmd,
 			"ssup_script_name": scriptName,
 			"vars_tail":        entity.VARS_TAIL,
@@ -711,7 +737,7 @@ func (c *SSHClient) buildRemoteCommand(task entity.Task) string {
 	default:
 		data := map[string]any{
 			"command":        strings.TrimSpace(command) + "\n\n",
-			"env_setup":      Env,
+			"env_setup":      Env.AsExport(),
 			"export_command": exportCmd,
 			"vars_tail":      entity.VARS_TAIL,
 		}

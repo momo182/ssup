@@ -14,6 +14,7 @@ type NetworkHost struct {
 	Tube     string  `yaml:"tube"`
 	Env      EnvList `yaml:"env"`
 	Sudo     bool    `yaml:"sudo" default:"false"`
+	// Namespace string  `yaml:"namespace" default:""`
 }
 
 func (n *NetworkHost) UnmarshalYAML(unmarshal func(interface{}) error) error {

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/clok/kemba"
 	"github.com/goware/prefixer"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/gateway"
@@ -35,19 +36,22 @@ func NewStackup(conf *entity.Supfile) (*Stackup, error) {
 //
 //	to multiple smaller methods.
 func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, commands ...*entity.Command) error {
+	l := kemba.New("usecase::Stackup.Run").Printf
 	if len(commands) == 0 {
 		return oops.Trace("1DF987CA-1E81-4C48-9163-DDAEA0C0CDF7").
 			Hint("check how many commands").
 			Wrap(errors.New("no commands to be run"))
 	}
 
-	env := envVars.AsExport()
+	env := envVars
 
 	// Create clients for every host (either SSH or Localhost).
-	bastion, e := sup.connectToBationHost(network)
+	l("about to connect to bastion:\n%v", network.Hosts)
+	bastion, e := sup.connectToBastionHost(network)
 	if e != nil {
 		return oops.
 			Trace("60267BB8-0049-4819-BA06-30EFDFE161AD").
+			Hint("connecting to bastion host").
 			Wrap(e)
 	}
 
@@ -55,6 +59,7 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 	clientCh := make(chan entity.ClientFacade, len(network.Hosts))
 	errCh := make(chan error, len(network.Hosts))
 
+	l("about to connect to hosts:\n%v", network.Hosts)
 	connectToHosts(network, &wg, env, errCh, clientCh, bastion)
 	wg.Wait()
 	close(clientCh)
@@ -73,19 +78,27 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 		clients = append(clients, client)
 	}
 	for err := range errCh {
-		return errors.Wrap(err, "connecting to clients failed")
+		return oops.Trace("B9E27F42-9351-4F36-9174-4B1F7B0B97D5").
+			Hint("connecting to clients failed").
+			Wrap(err)
 	}
 
 	// Run command or run multiple commands defined by target sequentially.
 	for _, cmd := range commands {
 		// Translate command into task(s).
+		l("command: %v", cmd.Name)
+		l("will create tasks")
 		tasks, err := CreateTasks(cmd, clients, env, sup.Args)
 		if err != nil {
-			return errors.Wrap(err, "creating task failed")
+			return oops.Trace("75F613AD-0E35-4FA0-A9D5-5A44B0C4EB08").
+				Hint("creating task failed").
+				With("tasks", tasks).
+				Wrap(e)
 		}
 
 		// Run tasks sequentially.
 		for _, task := range tasks {
+			l("task: %v", task)
 			var writers []io.Writer
 			var wg sync.WaitGroup
 
@@ -110,7 +123,10 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 				if len(cmd.Upload) > 0 {
 					for _, upload_command := range cmd.Upload {
 						if err := c.Upload(upload_command.Src, upload_command.Dst); err != nil {
-							return errors.Wrap(err, prefix+"uploading files failed")
+							return oops.Trace("28D38F66-3258-4578-A275-7D70F3765C0A").
+								Hint("running upload command").
+								With("upload_command", upload_command).
+								Wrap(e)
 						}
 					}
 				}
@@ -222,7 +238,7 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 	return nil
 }
 
-func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env string, errCh chan error, clientCh chan entity.ClientFacade, bastion *gateway.SSHClient) {
+func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env entity.EnvList, errCh chan error, clientCh chan entity.ClientFacade, bastion *gateway.SSHClient) {
 	for i, host := range network.Hosts {
 		wg.Add(1)
 		go func(i int, host entity.NetworkHost) {
@@ -231,7 +247,7 @@ func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env string, err
 			// localhost client
 			if host.Host == "localhost" || host.Host == "127.0.0.1" {
 				local := &gateway.LocalhostClient{
-					Env: env + `export SUP_HOST="` + host.Host + `";`,
+					Env: append(env, &entity.EnvVar{Key: "SUP_HOST", Value: host.Host}),
 				}
 				if err := local.Connect(host); err != nil {
 					errCh <- errors.Wrap(err, "connecting to localhost failed")
@@ -248,7 +264,7 @@ func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env string, err
 			}
 
 			remote := &gateway.SSHClient{
-				Env:      env + `export SUP_HOST="` + host.Host + `";`,
+				Env:      append(env, &entity.EnvVar{Key: "SUP_HOST", Value: host.Host}),
 				User:     network.User,
 				Color:    entity.Colors[i%len(entity.Colors)],
 				Password: pass,
@@ -271,7 +287,7 @@ func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env string, err
 	return
 }
 
-func (*Stackup) connectToBationHost(network *entity.Network) (*gateway.SSHClient, error) {
+func (*Stackup) connectToBastionHost(network *entity.Network) (*gateway.SSHClient, error) {
 	var bastion *gateway.SSHClient
 	if network.Bastion != "" {
 		bastion = &gateway.SSHClient{}
