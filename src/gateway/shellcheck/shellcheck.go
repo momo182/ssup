@@ -15,10 +15,9 @@ func New() *ShellCheck {
 	return &ShellCheck{}
 }
 
-func (s *ShellCheck) Check(task *entity.Task) error {
+func (s *ShellCheck) Check(cmd string) error {
 	_, err := exec.LookPath("shellcheck")
 	if err == nil {
-		cmd := task.Run
 		check := "shellcheck -f tty -e SC2148,SC2155,SC2001 -"
 		fmt.Print(entity.ResetColor)
 		_, e := script.Echo(cmd).Exec(check).Stdout()
@@ -28,7 +27,6 @@ func (s *ShellCheck) Check(task *entity.Task) error {
 				Hint("running shellcheck").
 				Wrap(e)
 		}
-
 	}
 	return nil
 }

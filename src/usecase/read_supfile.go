@@ -46,14 +46,14 @@ func ReadSupfile(initialArgs *entity.InitialArgs) *entity.Supfile {
 			l("failed to read ./Supfile.yml, will exit")
 			fmt.Fprintln(os.Stderr, firstErr)
 			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			os.Exit(47)
 		}
 	}
 	l("successfully read ./Supfile")
 	conf, err := NewSupfile(data)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(48)
 	}
 	l("successfully parsed Supfile")
 	return conf

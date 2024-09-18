@@ -4,7 +4,17 @@
 			"path": "src/gateway/ssh.go",
 			"bookmarks": [
 				{
-					"line": 701,
+					"line": 304,
+					"column": 0,
+					"label": "FIX HERE!!!!!!!!!!!!"
+				},
+				{
+					"line": 454,
+					"column": 0,
+					"label": "SOURCE!!!!!!!!!!"
+				},
+				{
+					"line": 699,
 					"column": 0,
 					"label": "add host env from lobby env store"
 				}

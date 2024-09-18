@@ -19,6 +19,7 @@ import (
 	"github.com/clok/kemba"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/gookit/goutil/dump"
+	"github.com/gookit/goutil/fsutil"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/lobby"
@@ -45,6 +46,11 @@ type SSHClient struct {
 	running      bool
 	Env          entity.EnvList //export FOO="bar"; export BAR="baz";
 	Color        string
+	RcloneCfg    string
+}
+
+func init() {
+
 }
 
 // ErrConnect describes connection error
@@ -56,6 +62,10 @@ type ErrConnect struct {
 
 func (e ErrConnect) Error() string {
 	return fmt.Sprintf(`Connect("%v@%v"): %v`, e.User, e.Host, e.Reason)
+}
+
+func (c *SSHClient) SetRcloneCfg(config string) {
+	c.RcloneCfg = config
 }
 
 // parseHost parses and normalizes <user>@<host:port> from a given string.
@@ -252,7 +262,8 @@ func (c *SSHClient) Run(task *entity.Task) error {
 // Wait waits until the remote command finishes and exits.
 // It closes the SSH session.
 func (c *SSHClient) Wait() error {
-	l := kemba.New("SSHClient.Wait").Printf
+	config := c.RcloneCfg
+	l := kemba.New("gateway::ssh::SSHClient.Wait").Printf
 	if c == nil {
 		log.Panic("7782C3CF-5E8E-4740-9F7E-D68A9B2ED71C: no ssh client passed")
 	}
@@ -282,8 +293,8 @@ func (c *SSHClient) Wait() error {
 	// check if host has port and cut it
 	removePortFromHostname(c)
 
-	l("create rclone config")
-	e = createRcloneConfig(rclone, remoteName, c)
+	l("create rclone config: %v", config)
+	e = createRcloneConfig(rclone, remoteName, c, config)
 	if e != nil {
 		return oops.Trace("FFDD911D-997C-4BA2-89DF-7E2303088B10").
 			Hint("create config to upload to remote").
@@ -291,7 +302,7 @@ func (c *SSHClient) Wait() error {
 			Wrap(e)
 	}
 
-	envsPull := exec.Command("rclone", "cat", remoteName+":"+entity.VARS_TAIL)
+	envsPull := exec.Command("rclone", "--config", config, "cat", remoteName+":"+entity.VARS_TAIL)
 	l("will run rclone command: %s", envsPull.String())
 	envlines, e := envsPull.CombinedOutput()
 	if e != nil {
@@ -311,7 +322,7 @@ func (c *SSHClient) Wait() error {
 	data := svc.Lobby.Namespaces.Get(c.Host)
 	l("data:\n%s", dump.Format(data))
 
-	envsDrop := exec.Command("rclone", "deletefile", remoteName+":"+entity.VARS_TAIL)
+	envsDrop := exec.Command("rclone", "--config", config, "deletefile", remoteName+":"+entity.VARS_TAIL)
 	l("will run rclone command: %s", envsDrop.String())
 	o, e := envsDrop.CombinedOutput()
 	if e != nil {
@@ -326,7 +337,7 @@ func (c *SSHClient) Wait() error {
 	}
 
 	l("delete remote")
-	destroyRcloneConfig := exec.Command(rclone, "config", "delete", remoteName)
+	destroyRcloneConfig := exec.Command(rclone, "--config", config, "config", "delete", remoteName)
 	_, e = destroyRcloneConfig.CombinedOutput()
 	if e != nil {
 		l("failed to run command: %v", e)
@@ -440,8 +451,9 @@ func (c *SSHClient) Signal(sig os.Signal) error {
 // -----------------------------
 
 // Upload local file to remote server
-func (c *SSHClient) Upload(localPath, remotePath string) error {
+func (c *SSHClient) Upload(localPath, remotePath string, config string) error {
 	l := kemba.New("sshclient.Upload").Printf
+	var rcloneCopyCmd = "copyto"
 
 	uuid, e := uuid.GenerateUUID()
 	if e != nil {
@@ -458,7 +470,7 @@ func (c *SSHClient) Upload(localPath, remotePath string) error {
 	removePortFromHostname(c)
 
 	l("create rclone config")
-	e = createRcloneConfig(rclone, remoteName, c)
+	e = createRcloneConfig(rclone, remoteName, c, config)
 	if e != nil {
 		return oops.Trace("FFDD911D-997C-4BA2-89DF-7E2303088B10").
 			Hint("create config to upload to remote").
@@ -466,8 +478,14 @@ func (c *SSHClient) Upload(localPath, remotePath string) error {
 			Wrap(e)
 	}
 
+	realPath := fsutil.ResolvePath(localPath)
+	// check if realPath is a directory
+	if fsutil.IsDir(realPath) {
+		rcloneCopyCmd = "copy"
+	}
+
 	l("prepare copy command")
-	copyCommand := exec.Command(rclone, "-P", "copyto", localPath, remoteName+":"+remotePath)
+	copyCommand := exec.Command(rclone, "--config", config, "--exclude", ".git/", "-P", rcloneCopyCmd, localPath, remoteName+":"+remotePath)
 
 	l("public run command: %v", copyCommand)
 	copyCommand.Stdout = os.Stdout
@@ -485,28 +503,6 @@ func (c *SSHClient) Upload(localPath, remotePath string) error {
 		return e
 	}
 
-	l("delete remote")
-	e = destroyRcloneConfig(rclone, remoteName)
-	if e != nil {
-		return oops.Trace("DE629EF2-91A4-4BD0-AB22-E40DE16970EA").
-			Hint("destroying remote after Upload").
-			Wrap(e)
-	}
-
-	return nil
-}
-
-func destroyRcloneConfig(rclone string, remoteName string) error {
-	destroyRcloneConfig := exec.Command(rclone, "config", "delete", remoteName)
-	o, e := destroyRcloneConfig.CombinedOutput()
-	if e != nil {
-		return oops.Trace("F007174B-6451-49A7-88B8-87015601E7C1").
-			Hint("destroying remote config").
-			With("remoteName", remoteName).
-			With("rclone", rclone).
-			With("output", o).
-			Wrap(e)
-	}
 	return nil
 }
 
@@ -526,13 +522,14 @@ func removePortFromHostname(c *SSHClient) {
 
 // Download file from remote
 func (c *SSHClient) Download(remotePath, localPath string, silent bool) error {
+	config := c.RcloneCfg
 	l := kemba.New("sshclient.Download").Printf
 	remoteName := "remote"
 
 	is_rclone := script.Exec("sh -c 'which rclone'").ExitStatus() == 0
 	if !is_rclone {
 		fmt.Println("Please install rclone on your system, and make it available in $PATH")
-		os.Exit(1)
+		os.Exit(131)
 	}
 
 	// check if host has port and cut it
@@ -541,7 +538,7 @@ func (c *SSHClient) Download(remotePath, localPath string, silent bool) error {
 		c.Host = strings.Split(c.Host, ":")[0]
 	}
 
-	initRcloneCmd := exec.Command("rclone", "config", "create", remoteName, "sftp", "host", c.Host, "user", c.User, "pass", c.Password)
+	initRcloneCmd := exec.Command("rclone", "--config", config, "config", "create", remoteName, "sftp", "host", c.Host, "user", c.User, "pass", c.Password)
 	_, e := initRcloneCmd.CombinedOutput()
 	if e != nil {
 		l("failed to run command: %v", e)
@@ -549,7 +546,7 @@ func (c *SSHClient) Download(remotePath, localPath string, silent bool) error {
 
 	}
 
-	copyCommand := exec.Command("rclone", "-P", "copy", remoteName+":"+remotePath, localPath)
+	copyCommand := exec.Command("rclone", "--config", config, "-P", "copy", remoteName+":"+remotePath, localPath)
 	if !silent {
 		copyCommand.Stdout = os.Stdout
 		copyCommand.Stderr = os.Stderr
@@ -566,7 +563,7 @@ func (c *SSHClient) Download(remotePath, localPath string, silent bool) error {
 		return e
 	}
 
-	destroyRcloneConfig := exec.Command("rclone", "config", "delete", remoteName)
+	destroyRcloneConfig := exec.Command("rclone", "--config", config, "config", "delete", remoteName)
 	_, e = destroyRcloneConfig.CombinedOutput()
 	if e != nil {
 		l("failed to run command: %v", e)
@@ -579,6 +576,7 @@ func (c *SSHClient) Download(remotePath, localPath string, silent bool) error {
 // GenerateOnRemote basically cats file content to "~/" + entity.TASK_TAIL on remote
 func (c *SSHClient) GenerateOnRemote(data []byte) error {
 	l := kemba.New("sshclient.GenerateOnRemote").Printf
+	config := c.RcloneCfg
 	oldCmd := string(data)
 	data = []byte(lobby.RegisterCmd + oldCmd)
 	l("processing:\ndump: FC693B9D-DA60-4DA9-B783-647270E27BBC\n%s", string(addNumbers(data)))
@@ -605,7 +603,7 @@ func (c *SSHClient) GenerateOnRemote(data []byte) error {
 	removePortFromHostname(c)
 
 	l("create rclone config")
-	e = createRcloneConfig(rclone, remoteName, c)
+	e = createRcloneConfig(rclone, remoteName, c, config)
 	if e != nil {
 		return oops.Trace("9ED9976F-9C69-4017-83AF-744AC40F2B9A").
 			Hint("create config to generate on remote").
@@ -614,7 +612,7 @@ func (c *SSHClient) GenerateOnRemote(data []byte) error {
 	}
 
 	l("prepare rcat command")
-	copyCommand := exec.Command(rclone, "rcat", remoteName+":"+entity.TASK_TAIL)
+	copyCommand := exec.Command(rclone, "--config", config, "rcat", remoteName+":"+entity.TASK_TAIL)
 	copyCommand.Stdin = bytes.NewReader(data)
 	l(fmt.Sprintf("copy:\n    src: %s\n    dest: %s\n", "user data", dest))
 
@@ -631,7 +629,7 @@ func (c *SSHClient) GenerateOnRemote(data []byte) error {
 	}
 
 	l("delete remote")
-	destroyRcloneConfig := exec.Command(rclone, "config", "delete", remoteName)
+	destroyRcloneConfig := exec.Command(rclone, "--config", config, "config", "delete", remoteName)
 	_, e = destroyRcloneConfig.CombinedOutput()
 	if e != nil {
 		l("failed to run command: %v", e)
@@ -642,14 +640,14 @@ func (c *SSHClient) GenerateOnRemote(data []byte) error {
 	return nil
 }
 
-func createRcloneConfig(rclone string, remoteName string, c *SSHClient) error {
+func createRcloneConfig(rclone string, remoteName string, c *SSHClient, config string) error {
 	if c == nil {
 		log.Panic("10EE087A-D3DA-4F16-A1D2-F71E11DE9EAD: c is nil")
 	}
 
 	l := kemba.New("sshclient::createRcloneConfig").Printf
 
-	initRcloneCmd := exec.Command(rclone, "config", "create", remoteName, "sftp", "host", c.Host, "user", c.User, "pass", c.Password)
+	initRcloneCmd := exec.Command(rclone, "--config", config, "config", "create", remoteName, "sftp", "host", c.Host, "user", c.User, "pass", c.Password)
 	o, e := initRcloneCmd.CombinedOutput()
 	if e != nil {
 		l("failed to run command: %v", e)
@@ -665,7 +663,7 @@ func mustFindRclone() string {
 	rclone, e := exec.LookPath("rclone")
 	if e != nil {
 		fmt.Println("Please install rclone on your system, and make it available in $PATH")
-		os.Exit(1)
+		os.Exit(11)
 	}
 	return rclone
 }

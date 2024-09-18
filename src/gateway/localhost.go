@@ -17,13 +17,14 @@ import (
 
 // Client is a wrapper over the SSH connection/sessions.
 type LocalhostClient struct {
-	cmd     *exec.Cmd
-	user    string
-	stdin   io.WriteCloser
-	stdout  io.Reader
-	stderr  io.Reader
-	running bool
-	Env     entity.EnvList //export FOO="bar"; export BAR="baz";
+	cmd       *exec.Cmd
+	user      string
+	stdin     io.WriteCloser
+	stdout    io.Reader
+	stderr    io.Reader
+	running   bool
+	Env       entity.EnvList //export FOO="bar"; export BAR="baz";
+	RcloneCfg string
 }
 
 func (c *LocalhostClient) Connect(_ entity.NetworkHost) error {
@@ -34,6 +35,10 @@ func (c *LocalhostClient) Connect(_ entity.NetworkHost) error {
 
 	c.user = u.Username
 	return nil
+}
+
+func (c *LocalhostClient) SetRcloneCfg(config string) {
+	c.RcloneCfg = config
 }
 
 func (c *LocalhostClient) Run(task *entity.Task) error {
@@ -127,16 +132,16 @@ func (c *LocalhostClient) Signal(sig os.Signal) error {
 // 	return nil
 // }
 
-func (c *LocalhostClient) Upload(src, dst string) error {
+func (c *LocalhostClient) Upload(src, dst string, config string) error {
 	l := kemba.New("sshclient.Upload").Printf
 
 	is_rclone := script.Exec("sh -c 'which rclone'").ExitStatus() == 0
 	if !is_rclone {
 		fmt.Println("Please install rclone on your system, and make it available in $PATH")
-		os.Exit(1)
+		os.Exit(13)
 	}
 
-	copyCommand := exec.Command("rclone", "-P", "copyto", src, dst)
+	copyCommand := exec.Command("rclone", "--config", config, "--exclude", ".git/", "-P", "copyto", src, dst)
 	copyCommand.Stdout = os.Stdout
 	copyCommand.Stderr = os.Stderr
 
@@ -157,14 +162,15 @@ func (c *LocalhostClient) Upload(src, dst string) error {
 
 func (c *LocalhostClient) Download(src, dst string, silent bool) error {
 	l := kemba.New("sshclient.Upload").Printf
+	config := c.RcloneCfg
 
 	is_rclone := script.Exec("sh -c 'which rclone'").ExitStatus() == 0
 	if !is_rclone {
 		fmt.Println("Please install rclone on your system, and make it available in $PATH")
-		os.Exit(1)
+		os.Exit(122)
 	}
 
-	copyCommand := exec.Command("rclone", "-P", "copy", src, dst)
+	copyCommand := exec.Command("rclone", "--config", config, "-P", "copy", src, dst)
 	if !silent {
 		copyCommand.Stdout = os.Stdout
 		copyCommand.Stderr = os.Stderr
@@ -206,7 +212,7 @@ func (c *LocalhostClient) GenerateOnRemote(data []byte) error {
 
 	l(fmt.Sprintf("copy:\n    src: %s\n    dest: %s\n", "user data", dest))
 	l("prepare rcat command")
-	copyCommand := exec.Command(rclone, "rcat", home+"/"+entity.TASK_TAIL)
+	copyCommand := exec.Command(rclone, "--config", c.RcloneCfg, "rcat", home+"/"+entity.TASK_TAIL)
 	copyCommand.Stdin = bytes.NewReader(data)
 	l(fmt.Sprintf("copy:\n    src: %s\n    dest: %s\n", "user data", dest))
 	return nil

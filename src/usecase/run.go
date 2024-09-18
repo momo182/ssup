@@ -9,10 +9,11 @@ import (
 	"sync"
 
 	"github.com/clok/kemba"
+	"github.com/dsnet/try"
+	"github.com/gookit/goutil/fsutil"
 	"github.com/goware/prefixer"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/gateway"
-	svc "github.com/momo182/ssup/src/lobby"
 	"github.com/pkg/errors"
 	"github.com/samber/oops"
 	"golang.org/x/crypto/ssh"
@@ -37,6 +38,15 @@ func NewStackup(conf *entity.Supfile) (*Stackup, error) {
 //	to multiple smaller methods.
 func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, commands ...*entity.Command) error {
 	l := kemba.New("usecase::Stackup.Run").Printf
+	rcloneTmpCfg := try.E1(fsutil.TempFile("", "rclone_configuration.*.cfg"))
+	rcloneTmpCfg.WriteString("")
+
+	defer func() {
+		l("set deferred cleanup")
+		rcloneTmpCfg.Close()
+		fsutil.Remove(rcloneTmpCfg.Name())
+	}()
+
 	if len(commands) == 0 {
 		return oops.Trace("1DF987CA-1E81-4C48-9163-DDAEA0C0CDF7").
 			Hint("check how many commands").
@@ -102,17 +112,11 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 			var writers []io.Writer
 			var wg sync.WaitGroup
 
-			//run shellcheck
-			if e := svc.Lobby.Shellcheck.Check(task); e != nil {
-				return oops.Trace("EBCC9B9D-9C3B-4C6D-A5F6-F54E151D2848").
-					Hint("running shellcheck").
-					Wrap(e)
-			}
-
 			// Run tasks on the provided clients.
 			for _, c := range task.Clients {
 				var prefix string
 				var prefixLen int
+				c.SetRcloneCfg(rcloneTmpCfg.Name())
 				if sup.prefix {
 					prefix, prefixLen = c.Prefix()
 					if len(prefix) < maxLen { // Left padding.
@@ -122,7 +126,7 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 
 				if len(cmd.Upload) > 0 {
 					for _, upload_command := range cmd.Upload {
-						if err := c.Upload(upload_command.Src, upload_command.Dst); err != nil {
+						if err := c.Upload(upload_command.Src, upload_command.Dst, rcloneTmpCfg.Name()); err != nil {
 							return oops.Trace("28D38F66-3258-4578-A275-7D70F3765C0A").
 								Hint("running upload command").
 								With("upload_command", upload_command).

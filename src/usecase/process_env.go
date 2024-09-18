@@ -73,7 +73,7 @@ func MergeVars(conf *entity.Supfile, network *entity.Network) entity.EnvList {
 	if err := ResolveValues(&vars); err != nil {
 		// If there is an error, print it to the standard error output and exit with code 1
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(46)
 	}
 
 	// Return the vars list
