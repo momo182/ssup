@@ -32,3 +32,8 @@ func (t *Targets) Get(name string) ([]string, bool) {
 	cmds, ok := t.targets[name]
 	return cmds, ok
 }
+
+func (t *Targets) Has(name string) bool {
+	_, ok := t.targets[name]
+	return ok
+}

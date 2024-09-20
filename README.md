@@ -29,6 +29,7 @@ Extensions to original sup
 - added #source:// directive for task script
 - ssup now changes dir to Supfile location to accomodate use of relative links with #source://
 - all data transfers are now on rclone binary
+- skip all networks definitions to use implicit localhost mode
 
 # Demo
 
@@ -81,6 +82,9 @@ networks:
 ### Network mods
 
 Now two forms supported, short and long.
+
+#### Short form
+
 First, short form:
 
 ```yaml
@@ -107,6 +111,10 @@ networks:
       - jim@example.com | $(echo "P@ssw0rd") << tube_foo22
 ```
 
+#### Long form
+
+next here comes the long form:
+
 ```yaml
 networks:
   remote2:
@@ -121,7 +129,56 @@ networks:
           HOST_FOO: hello_FOOBAR-44
 ```
 
+#### Local/MAKEFILE mode
 
+now you can skip defining `networks:` section, and if you run  
+ssup with args that contain only commands and/or targets, ssup  
+will run those commands on localhost:
+
+```yaml
+# example Makefile i use to build some tool
+---
+version: 0.5
+
+commands:
+  build:
+    desc: builds export app
+    run: |
+      go mod tidy
+      go build -o logseq-export ./cmd/logseq-export/main.go
+      rclone tree .
+
+  run:
+    desc: runs conversion process
+    run: |
+      DEBUG='*' ./logseq-export ~/Documents/mm_wiki_copy2/pages  ~/Documents/mm_wiki_copy2_converted
+
+  clean:
+    desc: cleans converted dir
+    run: |
+      rm -rfv ~/Documents/mm_wiki_copy2_converted/*
+```
+this is the actual run:
+
+```text
+~/git/logseq-export> ssup build                                                                                               09/20/2024 11:45:53 AM
+k.pechenenko@localhost | /
+k.pechenenko@localhost | ├── Supfile
+k.pechenenko@localhost | ├── cmd
+k.pechenenko@localhost | │   └── logseq-export
+k.pechenenko@localhost | │       └── main.go
+k.pechenenko@localhost | ├── go.mod
+k.pechenenko@localhost | ├── go.sum
+k.pechenenko@localhost | ├── internal
+k.pechenenko@localhost | │   ├── file
+k.pechenenko@localhost | │   │   ├── copier.go
+k.pechenenko@localhost | │   │   └── transformer.go
+k.pechenenko@localhost | │   └── usecase
+k.pechenenko@localhost | │       └── export.go
+k.pechenenko@localhost | └── logseq-export
+k.pechenenko@localhost |
+k.pechenenko@localhost | 5 directories, 8 files
+```
 
 ## Command
 

@@ -160,3 +160,8 @@ func (c *Commands) Get(name string) (Command, bool) {
 	cmd, ok := c.Cmds[name]
 	return cmd, ok
 }
+
+func (c *Commands) Has(name string) bool {
+	_, ok := c.Cmds[name]
+	return ok
+}

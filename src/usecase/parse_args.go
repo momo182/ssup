@@ -20,9 +20,29 @@ func ParseInitialArgs(conf *entity.Supfile, envFromArgs entity.FlagStringSlice) 
 
 	l("check args len")
 	args := flag.Args()
-	if len(args) < 1 {
+
+	switch {
+	case len(args) < 1:
 		networkUsage(conf)
+		cmdUsage(conf)
 		return nil, nil, entity.ErrUsage
+
+	case len(args) >= 1:
+		l("check if all args are commands")
+		if len(conf.Networks.Names) == 0 {
+			l("no name of network")
+			// test that all other args are commands or targets
+			for _, cmd := range args[1:] {
+				if !conf.Targets.Has(cmd) && !conf.Commands.Has(cmd) {
+					networkUsage(conf)
+					cmdUsage(conf)
+					return nil, nil, fmt.Errorf("%v: %v", entity.ErrCmd, cmd)
+				}
+			}
+
+			EnsureLocalhost(conf)
+			args = append([]string{"localhost"}, args...)
+		}
 	}
 
 	l("does the <network> exist?")
@@ -152,7 +172,7 @@ func networkUsage(conf *entity.Supfile) {
 		fmt.Fprintf(w, "- %v\n", name)
 		network, _ := conf.Networks.Get(name)
 		for _, host := range network.Hosts {
-			fmt.Fprintf(w, "\t- %v\n", host)
+			fmt.Fprintf(w, "\t- %v\n", host.Host)
 		}
 	}
 	fmt.Fprintln(w)
