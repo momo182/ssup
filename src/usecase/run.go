@@ -8,10 +8,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/clok/kemba"
+	"github.com/dsnet/try"
+	"github.com/gookit/goutil/fsutil"
 	"github.com/goware/prefixer"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/gateway"
-	svc "github.com/momo182/ssup/src/lobby"
+	clientLocal "github.com/momo182/ssup/src/gateway/localhost"
+	clientSSH "github.com/momo182/ssup/src/gateway/ssh"
 	"github.com/pkg/errors"
 	"github.com/samber/oops"
 	"golang.org/x/crypto/ssh"
@@ -35,19 +38,31 @@ func NewStackup(conf *entity.Supfile) (*Stackup, error) {
 //
 //	to multiple smaller methods.
 func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, commands ...*entity.Command) error {
+	l := kemba.New("usecase::Stackup.Run").Printf
+	rcloneTmpCfg := try.E1(fsutil.TempFile("", "rclone_configuration.*.cfg"))
+	rcloneTmpCfg.WriteString("")
+
+	defer func() {
+		l("set deferred cleanup")
+		rcloneTmpCfg.Close()
+		fsutil.Remove(rcloneTmpCfg.Name())
+	}()
+
 	if len(commands) == 0 {
 		return oops.Trace("1DF987CA-1E81-4C48-9163-DDAEA0C0CDF7").
 			Hint("check how many commands").
 			Wrap(errors.New("no commands to be run"))
 	}
 
-	env := envVars.AsExport()
+	env := envVars
 
 	// Create clients for every host (either SSH or Localhost).
-	bastion, e := sup.connectToBationHost(network)
+	l("about to connect to bastion:\n%v", network.Hosts)
+	bastion, e := sup.connectToBastionHost(network)
 	if e != nil {
 		return oops.
 			Trace("60267BB8-0049-4819-BA06-30EFDFE161AD").
+			Hint("connecting to bastion host").
 			Wrap(e)
 	}
 
@@ -55,6 +70,7 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 	clientCh := make(chan entity.ClientFacade, len(network.Hosts))
 	errCh := make(chan error, len(network.Hosts))
 
+	l("about to connect to hosts:\n%v", network.Hosts)
 	connectToHosts(network, &wg, env, errCh, clientCh, bastion)
 	wg.Wait()
 	close(clientCh)
@@ -63,7 +79,7 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 	maxLen := 0
 	var clients []entity.ClientFacade = make([]entity.ClientFacade, 0)
 	for client := range clientCh {
-		if remote, ok := client.(*gateway.SSHClient); ok {
+		if remote, ok := client.(*clientSSH.SSHClient); ok {
 			defer remote.Close()
 		}
 		_, prefixLen := client.Prefix()
@@ -73,33 +89,36 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 		clients = append(clients, client)
 	}
 	for err := range errCh {
-		return errors.Wrap(err, "connecting to clients failed")
+		return oops.Trace("B9E27F42-9351-4F36-9174-4B1F7B0B97D5").
+			Hint("connecting to clients failed").
+			Wrap(err)
 	}
+	l("connected to all clients")
 
 	// Run command or run multiple commands defined by target sequentially.
 	for _, cmd := range commands {
 		// Translate command into task(s).
+		l("command: %v", cmd.Name)
+		l("will create tasks")
 		tasks, err := CreateTasks(cmd, clients, env, sup.Args)
 		if err != nil {
-			return errors.Wrap(err, "creating task failed")
+			return oops.Trace("75F613AD-0E35-4FA0-A9D5-5A44B0C4EB08").
+				Hint("creating task failed").
+				With("tasks", tasks).
+				Wrap(e)
 		}
 
 		// Run tasks sequentially.
 		for _, task := range tasks {
+			l("task: %v", task)
 			var writers []io.Writer
 			var wg sync.WaitGroup
-
-			//run shellcheck
-			if e := svc.Lobby.Shellcheck.Check(task); e != nil {
-				return oops.Trace("EBCC9B9D-9C3B-4C6D-A5F6-F54E151D2848").
-					Hint("running shellcheck").
-					Wrap(e)
-			}
 
 			// Run tasks on the provided clients.
 			for _, c := range task.Clients {
 				var prefix string
 				var prefixLen int
+				c.SetRcloneCfg(rcloneTmpCfg.Name())
 				if sup.prefix {
 					prefix, prefixLen = c.Prefix()
 					if len(prefix) < maxLen { // Left padding.
@@ -109,8 +128,11 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 
 				if len(cmd.Upload) > 0 {
 					for _, upload_command := range cmd.Upload {
-						if err := c.Upload(upload_command.Src, upload_command.Dst); err != nil {
-							return errors.Wrap(err, prefix+"uploading files failed")
+						if err := c.Upload(upload_command.Src, upload_command.Dst, rcloneTmpCfg.Name()); err != nil {
+							return oops.Trace("28D38F66-3258-4578-A275-7D70F3765C0A").
+								Hint("running upload command").
+								With("upload_command", upload_command).
+								Wrap(e)
 						}
 					}
 				}
@@ -222,7 +244,9 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 	return nil
 }
 
-func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env string, errCh chan error, clientCh chan entity.ClientFacade, bastion *gateway.SSHClient) {
+func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env entity.EnvList, errCh chan error, clientCh chan entity.ClientFacade, bastion *clientSSH.SSHClient) {
+	l := kemba.New("usecase::run::connectToHosts").Printf
+	l("will range over hosts: %v", len(network.Hosts))
 	for i, host := range network.Hosts {
 		wg.Add(1)
 		go func(i int, host entity.NetworkHost) {
@@ -230,9 +254,19 @@ func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env string, err
 
 			// localhost client
 			if host.Host == "localhost" || host.Host == "127.0.0.1" {
-				local := &gateway.LocalhostClient{
-					Env: env + `export SUP_HOST="` + host.Host + `";`,
+				l("found localhost")
+				envStore := new(entity.EnvList)
+				envStore.Set("SUP_HOST", host.Host)
+				local := &clientLocal.LocalhostClient{
+					Env: envStore,
 				}
+
+				if host.Tube != "" {
+					l("will inject tube: %s", host.Tube)
+					local.SetTube(host.Tube)
+				}
+
+				l("about to connect to localhost")
 				if err := local.Connect(host); err != nil {
 					errCh <- errors.Wrap(err, "connecting to localhost failed")
 					return
@@ -240,26 +274,40 @@ func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env string, err
 				clientCh <- local
 				return
 			}
+			l("found remote host: %s", host.Host)
 
 			// SSH client
+			l("password check for host")
 			pass := host.Password
 			if pass == "" && network.Password != "" {
 				pass = network.Password
 			}
 
-			remote := &gateway.SSHClient{
-				Env:      env + `export SUP_HOST="` + host.Host + `";`,
+			l("filling in user,env and creds")
+			envStore := new(entity.EnvList)
+			envStore.Set("SUP_HOST", host.Host)
+			remote := &clientSSH.SSHClient{
+				Env:      envStore,
 				User:     network.User,
 				Color:    entity.Colors[i%len(entity.Colors)],
 				Password: pass,
 			}
 
+			if host.Tube != "" {
+				l("will inject tube: %s", host.Tube)
+				remote.SetTube(host.Tube)
+			}
+
+			l("about to connect to remote host")
+
 			if bastion != nil {
+				l("bastion is set, trying it now")
 				if err := remote.ConnectWith(host, bastion.DialThrough); err != nil {
 					errCh <- errors.Wrap(err, "connecting to remote host through bastion failed")
 					return
 				}
 			} else {
+				l("connecting via direct connection")
 				if err := remote.Connect(host); err != nil {
 					errCh <- errors.Wrap(err, "connecting to remote host failed")
 					return
@@ -271,17 +319,22 @@ func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env string, err
 	return
 }
 
-func (*Stackup) connectToBationHost(network *entity.Network) (*gateway.SSHClient, error) {
-	var bastion *gateway.SSHClient
+func (*Stackup) connectToBastionHost(network *entity.Network) (*clientSSH.SSHClient, error) {
+	l := kemba.New("usecase::run::connectToBastionHost").Printf
+
+	l("prepping ssh client to bastion: %s", network.Bastion)
+	var bastion *clientSSH.SSHClient
 	if network.Bastion != "" {
-		bastion = &gateway.SSHClient{}
+		bastion = &clientSSH.SSHClient{}
 		bastionHost := entity.NetworkHost{
 			Host: network.Bastion,
 		}
+		l("launch client connection to bastion")
 		if err := bastion.Connect(bastionHost); err != nil {
 			return nil, errors.Wrap(err, "connecting to bastion failed")
 		}
 	}
+	l("done with bastion connection")
 	return bastion, nil
 }
 

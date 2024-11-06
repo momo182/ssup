@@ -1,0 +1,49 @@
+{
+	"files": [
+		{
+			"path": "src/gateway/ssh/ssh.go",
+			"bookmarks": [
+				{
+					"line": 333,
+					"column": 0,
+					"label": "FIX HERE!!!!!!!!!!!!"
+				},
+				{
+					"line": 483,
+					"column": 0,
+					"label": "SOURCE!!!!!!!!!!"
+				}
+			]
+		},
+		{
+			"path": "src/usecase/create_tasks.go",
+			"bookmarks": [
+				{
+					"line": 67,
+					"column": 0,
+					"label": "local client env are set here"
+				}
+			]
+		},
+		{
+			"path": "src/lobby/lobby.go",
+			"bookmarks": [
+				{
+					"line": 117,
+					"column": 0,
+					"label": "and here we inject vars v2"
+				}
+			]
+		},
+		{
+			"path": "src/usecase/process_env.go",
+			"bookmarks": [
+				{
+					"line": 58,
+					"column": 0,
+					"label": "here we merge vars too"
+				}
+			]
+		}
+	]
+}

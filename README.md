@@ -17,6 +17,14 @@ Super Stack Up
 
 Super Stack Up is a simple deployment tool that performs given set of commands on multiple hosts in parallel. It reads Supfile, a YAML configuration file, which defines networks (groups of hosts), commands and targets.
 
+WARNING, SSUP NEEDS `rclone` BINARY IN $PATH AND PROGRAM WILL BAIL IF `rclone` IS MISSING.  
+
+> yes, we could use `scp` to rely only on ssh, but rclone transfers are much faster,
+> especially if you iteratively developing smth that needs to copy files to remote machine,
+> as `rclone` just like `rsync` will segment destionation file and for files that already
+> exist on remote (and have the same hash) it will skip the copy part.
+> scp would just blind copy the file over and over
+
 Extensions to original sup
 =========
 
@@ -26,9 +34,11 @@ Extensions to original sup
 - env vars can use subshell syntax to grab a value
 - password fields can use subshell syntax to grab a value and use plain text value
 - added automatic shellcheck support if you have it in PATH
-- added #source:// directive for task script
+- added #source:// directive for `run:` and `local:`
 - ssup now changes dir to Supfile location to accomodate use of relative links with #source://
 - all data transfers are now on rclone binary
+- skip all networks definitions to use implicit localhost mode (makefile mode)
+- namespaces to collect vars from one stage and pass those to next stages
 
 # Demo
 
@@ -81,13 +91,16 @@ networks:
 ### Network mods
 
 Now two forms supported, short and long.
+
+#### Short form
+
 First, short form:
 
 ```yaml
 networks:
   remote:
     hosts:
-      - support@10.8.150.2 | P@ssw0rd << tube_foo22
+      - remote_user@remote | P@ssw0rd << tube_foo22
       # ^       ^          ^ ^        ^  ^
       # |       |          | |        |  |
       # user    |          | |        |  |
@@ -107,6 +120,10 @@ networks:
       - jim@example.com | $(echo "P@ssw0rd") << tube_foo22
 ```
 
+#### Long form
+
+next here comes the long form:
+
 ```yaml
 networks:
   remote2:
@@ -121,7 +138,56 @@ networks:
           HOST_FOO: hello_FOOBAR-44
 ```
 
+#### Local/MAKEFILE mode
 
+now you can skip defining `networks:` section at all. 
+If you run ssup with args that contain only commands and/or targets, ssup  
+will run those commands on localhost:
+
+```yaml
+# example Makefile i use to build some tool
+---
+version: 0.5
+
+commands:
+  build:
+    desc: builds export app
+    run: |
+      go mod tidy
+      go build -o logseq-export ./cmd/logseq-export/main.go
+      rclone tree .
+
+  run:
+    desc: runs conversion process
+    run: |
+      DEBUG='*' ./logseq-export ~/Documents/mm_wiki_copy2/pages  ~/Documents/mm_wiki_copy2_converted
+
+  clean:
+    desc: cleans converted dir
+    run: |
+      rm -rfv ~/Documents/mm_wiki_copy2_converted/*
+```
+this is the actual run:
+
+```text
+~/git/logseq-export> ssup build
+local_user@localhost | /
+local_user@localhost | ├── Supfile
+local_user@localhost | ├── cmd
+local_user@localhost | │   └── logseq-export
+local_user@localhost | │       └── main.go
+local_user@localhost | ├── go.mod
+local_user@localhost | ├── go.sum
+local_user@localhost | ├── internal
+local_user@localhost | │   ├── file
+local_user@localhost | │   │   ├── copier.go
+local_user@localhost | │   │   └── transformer.go
+local_user@localhost | │   └── usecase
+local_user@localhost | │       └── export.go
+local_user@localhost | └── logseq-export # <<< this is the file that was built
+local_user@localhost |
+local_user@localhost | 5 directories, 8 files
+```
 
 ## Command
 
@@ -335,6 +401,162 @@ targets:
 - `$SUP_USER` - User who invoked sup command.
 - `$SUP_TIME` - Date/time of sup command invocation.
 - `$SUP_ENV` - Environment variables provided on sup command invocation. You can pass `$SUP_ENV` to another `sup` or `docker` commands in your Supfile.
+
+### Namespaces
+
+namespaces allow to pass envs from one command to another command.
+To pass any env to the next command use `register` bash function with two or three params:
+
+```shell
+register foo22 bar33
+# ^      ^     ^  
+# |      |     |
+# |      |     value
+# |      key name
+# register function
+
+register ENV_WE_PASS_FURTHER super_secret main_tube
+# ^      ^                   ^            ^
+# |      |                   |            |
+# |      |                   |            namespace name
+# |      |                   value
+# |      key name
+# register function
+```
+as seen above, example #1 sets env into the host namespace and those envs
+are automatically injected into all consecutive commands run on that exact host.
+
+second example sets env into the named namespace and you specify the third param to
+`register` to set exact namespace name to push envs to.
+See example Supfile below, note how network `remote` has namespace `main_tube` attached to it.
+In the body of the first command, commands `register foo22 bar33` and `register foo33 bar22`
+will register envs that will stay in host namespace, but `register ENV_WE_PASS_FURTHER super_secret main_tube`
+uses namespace `main_tube` to pass env to the `test2` command run on `remote` and as you can see via export + grep,
+it's there.
+
+> register name was borrowed from ansible to be natural to anyone who used ansible before
+
+now it might not be obvious from the first glance how come, fisrt command runs on localhost and the next  
+is on remote, but just look closely at definitions:
+```yaml
+commands:
+  test:
+    desc: demostrates usage of register func
+    env:
+      CMD_ENV_VAR: SUPOER_VAR_FOOBAR
+    local: |
+```
+the `local` keyword forces to run this command on localhost, analogous to
+ansible's `delegate_to: 127.0.0.1`.
+The `run` keyword will run commands on any `networks:` hosts you asked
+```yaml
+  test2:
+    desc: |
+      notice how foo22 and foo33 are not passed over, the stayed in the host namespace
+    env:
+      NEW_VAR: sFOOBAR222222
+    run: |
+```
+
+example supfile to demonstrate namespaces usage:
+```yaml
+---
+version: 0.5
+
+networks:
+  l:
+    hosts:
+      - localhost
+  all:
+    hosts:
+      - momo182@1.2.3.4 | some_password
+  win:
+    env:
+      foo22: bar414
+    hosts:
+      - host: ssh://win_user@4.3.2.1
+        # user: Administrator
+        pass: user_pasword
+        tube: ssup_was_here
+        env:
+          HOST_FOO: hello_FOOBAR-44
+  remote:
+    hosts:
+      - remote_user@remote | $(cat ../secrets/remote_password.txt) << main_tube
+commands:
+  test:
+    desc: demostrates usage of register func
+    env:
+      CMD_ENV_VAR: SUPOER_VAR_FOOBAR
+    local: |
+      echo "==================================="
+      echo "part1, where we define stuff
+      "
+      register foo22 bar33
+      register foo33 bar22
+      register FOO_BAR momowashere123 main_tube
+      register ENV_WE_PASS_FURTHER super_secret main_tube
+      
+      echo "done with definitions"
+
+  test2:
+    desc: |
+      notice how foo22 and foo33 are not passed over, the stayed in the host namespace
+    env:
+      NEW_VAR: sFOOBAR222222
+    run: |
+      echo "==================================="
+      echo "part 2, where we dont find what we want
+      "
+      export | grep -i foo
+      echo "passed var: \$FOO_BAR = $FOO_BAR"
+      echo "new var: \$NEW_VAR = $NEW_VAR"
+      # this one won't override the one from part1 as tube values will win over
+      register FOO_BAR momowashere321 
+
+  test3:
+    run: |
+      echo "==================================="
+      echo "part 3, we tried to register \$FOO_BAR but alas
+      "
+      echo "passed var: \$FOO_BAR = $FOO_BAR"
+      echo "passed var2: \$ENV_WE_PASS_FURTHER = $ENV_WE_PASS_FURTHER"
+      register FOO_BAR momowashere321 main_tube
+
+  test4:
+    run: |
+      echo "==================================="
+      echo "part 4, where key = value with tube name wins
+      "
+      echo "passed var: \$FOO_BAR = $FOO_BAR"
+      echo "passed var2: \$ENV_WE_PASS_FURTHER = $ENV_WE_PASS_FURTHER"
+```
+output will be:
+```
+~/sup_files> ssup remote test test2 test3 test4
+local_user@localhost | ===================================
+local_user@localhost | part1, where we define stuff
+local_user@localhost |
+local_user@localhost | done with definitions
+remote_user@remote | ===================================
+remote_user@remote | part 2, where we dont find what we want
+remote_user@remote |
+remote_user@remote | declare -x CMD_ENV_VAR="SUPOER_VAR_FOOBAR"
+remote_user@remote | declare -x FOO_BAR="momowashere123"
+remote_user@remote | declare -x NEW_VAR="sFOOBAR222222"
+remote_user@remote | passed var: $FOO_BAR = momowashere123
+remote_user@remote | new var: $NEW_VAR = sFOOBAR222222
+remote_user@remote | ===================================
+remote_user@remote | part 3, we tried to register $FOO_BAR but alas
+remote_user@remote |
+remote_user@remote | passed var: $FOO_BAR = momowashere123
+remote_user@remote | passed var2: $ENV_WE_PASS_FURTHER = super_secret
+remote_user@remote | ===================================
+remote_user@remote | part 4, where key = value with tube name wins
+remote_user@remote |
+remote_user@remote | passed var: $FOO_BAR = momowashere321
+remote_user@remote | passed var2: $ENV_WE_PASS_FURTHER = super_secret
+```
 
 # Running sup from Supfile
 

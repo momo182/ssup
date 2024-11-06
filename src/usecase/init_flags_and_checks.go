@@ -11,7 +11,7 @@ import (
 )
 
 func CheckInitialArgs(network *entity.Network, initialArgs *entity.InitialArgs) {
-	l := kemba.New("usecase > CheckInitialArgs").Printf
+	l := kemba.New("usecase::CheckInitialArgs").Printf
 
 	l("--only flag filters hosts")
 	if initialArgs.OnlyHosts != "" {
@@ -37,7 +37,7 @@ func checkSSHConfig(network *entity.Network, initialArgs *entity.InitialArgs) {
 	confHosts, err := sshconfig.ParseSSHConfig(ResolvePath(initialArgs.SshConfig))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(41)
 	}
 
 	l("forming conf map")
@@ -69,7 +69,7 @@ func checkExceptHosts(network *entity.Network, initialArgs *entity.InitialArgs) 
 	expr, err := regexp.CompilePOSIX(initialArgs.ExceptHosts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(42)
 	}
 
 	l("range over hosts and check for host not present")
@@ -82,7 +82,7 @@ func checkExceptHosts(network *entity.Network, initialArgs *entity.InitialArgs) 
 	l("found 'only' hosts: %v", len(hosts))
 	if len(hosts) == 0 {
 		fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts left after --except '%v' regexp", initialArgs.OnlyHosts))
-		os.Exit(1)
+		os.Exit(43)
 	}
 	network.Hosts = hosts
 }
@@ -93,7 +93,7 @@ func checkOnlyHosts(network *entity.Network, initialArgs *entity.InitialArgs) {
 	expr, err := regexp.CompilePOSIX(initialArgs.OnlyHosts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(44)
 	}
 
 	l("range over hosts and check for host present")
@@ -106,7 +106,7 @@ func checkOnlyHosts(network *entity.Network, initialArgs *entity.InitialArgs) {
 	l("found 'only' hosts: %v", len(hosts))
 	if len(hosts) == 0 {
 		fmt.Fprintln(os.Stderr, fmt.Errorf("no hosts match --only '%v' regexp", initialArgs.OnlyHosts))
-		os.Exit(1)
+		os.Exit(45)
 	}
 	network.Hosts = hosts
 }

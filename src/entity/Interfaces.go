@@ -7,6 +7,7 @@ import (
 
 type ClientFacade interface {
 	Connect(host NetworkHost) error
+	SetRcloneCfg(config string)
 	Run(task *Task) error
 	Wait() error
 	Close() error
@@ -17,6 +18,10 @@ type ClientFacade interface {
 	Stderr() io.Reader
 	Stdout() io.Reader
 	Signal(os.Signal) error
-	Upload(src string, dest string) error
+	Upload(src string, dest string, cfg string) error
 	Download(src string, dest string, silent bool) error
+	GenerateOnRemote(data []byte) error
+	GetHost() string
+	GetTube() string
+	SetTube(name string)
 }

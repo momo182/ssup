@@ -8,12 +8,15 @@ import (
 	"github.com/clok/kemba"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/gateway/namespace"
 	"github.com/momo182/ssup/src/gateway/shellcheck"
 	svc "github.com/momo182/ssup/src/lobby"
 	"github.com/momo182/ssup/src/usecase"
 	oopslogrus "github.com/samber/oops/loggers/logrus"
 	"github.com/sirupsen/logrus"
 )
+
+var RcloneConfig = ""
 
 var initialArgs *entity.InitialArgs = &entity.InitialArgs{}
 
@@ -41,6 +44,7 @@ func init() {
 	spew.Config.MaxDepth = entity.SPEW_DEPTH
 	svc.Lobby = &svc.ServiceLobby{}
 	svc.Lobby.Shellcheck = &shellcheck.ShellCheck{}
+	svc.Lobby.Namespaces = namespace.New()
 }
 
 func main() {
@@ -64,7 +68,12 @@ func main() {
 	network, commands, err := usecase.ParseInitialArgs(conf, initialArgs.EnvVars)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(2)
+	}
+
+	if e := usecase.RunShellcheck(conf); e != nil {
+		fmt.Fprintln(os.Stderr, e)
+		os.Exit(1442)
 	}
 
 	usecase.CheckInitialArgs(network, initialArgs)
@@ -79,7 +88,7 @@ func main() {
 	app, err := usecase.NewStackup(conf)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(11)
 	}
 	app.Debug(initialArgs.Debug)
 	app.Prefix(!initialArgs.DisablePrefix)
@@ -89,6 +98,6 @@ func main() {
 	err = app.Run(network, vars, commands...)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		os.Exit(12)
 	}
 }

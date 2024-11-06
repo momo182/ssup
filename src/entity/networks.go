@@ -32,3 +32,17 @@ func (n *Networks) Get(name string) (Network, bool) {
 	net, ok := n.Nets[name]
 	return net, ok
 }
+
+// this is just to set localhost
+// so we dont process slice of values
+// as we should be...
+func (n *Networks) Set(name string, value string) {
+	h := NetworkHost{
+		Host: value,
+	}
+	n.Names = append(n.Names, name)
+	n.Nets = map[string]Network{}
+	n.Nets[name] = Network{
+		Hosts: []NetworkHost{h},
+	}
+}

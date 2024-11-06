@@ -11,6 +11,7 @@ type Supfile struct {
 	Targets  Targets  `yaml:"targets"`
 	Env      EnvList  `yaml:"env"`
 	Version  string   `yaml:"version"`
+	Desc     string   `yaml:"desc"`
 }
 
 type ErrMustUpdate struct {

@@ -13,8 +13,34 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// ReadSupfile looks for Supfile or Supfiley.yml in the current working directory,
+// cd's to Supfile dir, reads it and calls NewSupfile, after all returns the parsed Supfile.
 func ReadSupfile(initialArgs *entity.InitialArgs) *entity.Supfile {
-	l := kemba.New("usecase > read_supfile").Printf
+	l := kemba.New("usecase::read_supfile").Printf
+
+	if initialArgs.Supfile == "" {
+		l("no file specfied, assuming ./Supfile")
+		initialArgs.Supfile = "./Supfile"
+	}
+
+	data, err := os.ReadFile(ResolvePath(initialArgs.Supfile))
+	if err != nil {
+		firstErr := err
+		l("failed to read ./Supfile, will try ./Supfile.yml")
+		data, err = os.ReadFile("./Supfile.yml")
+		if err != nil {
+			l("failed to read ./Supfile.yml, will exit")
+			fmt.Fprintln(os.Stderr, firstErr)
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(47)
+		}
+	}
+	l("successfully read ./Supfile")
+	conf, err := NewSupfile(data)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(48)
+	}
 
 	// cd to supfile dir
 	if initialArgs.Supfile != "" {
@@ -32,29 +58,6 @@ func ReadSupfile(initialArgs *entity.InitialArgs) *entity.Supfile {
 		l("cd done")
 	}
 
-	if initialArgs.Supfile == "" {
-		l("no file specfied, assuming ./Supfile")
-		initialArgs.Supfile = "./Supfile"
-	}
-
-	data, err := os.ReadFile(ResolvePath(initialArgs.Supfile))
-	if err != nil {
-		firstErr := err
-		l("failed to read ./Supfile, will try ./Supfile.yml")
-		data, err = os.ReadFile("./Supfile.yml")
-		if err != nil {
-			l("failed to read ./Supfile.yml, will exit")
-			fmt.Fprintln(os.Stderr, firstErr)
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-	}
-	l("successfully read ./Supfile")
-	conf, err := NewSupfile(data)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 	l("successfully parsed Supfile")
 	return conf
 }

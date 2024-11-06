@@ -23,6 +23,7 @@ type Command struct {
 	Fetch    *FetchOrder `yaml:"fetch" ` // See Fetch struct.
 	Sudo     bool        `yaml:"sudo" `  // Run command(s) as root?
 	SudoPass string      `yaml:"sudo_pass"`
+	Env      EnvList     `yaml:"env"`
 
 	// API backward compatibility. Will be deprecated in v1.0.
 	RunOnce bool `yaml:"run_once"` // The command should be run once only.
@@ -63,7 +64,7 @@ type Commands struct {
 // }
 
 func (c *Commands) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	l := kemba.New("commands.unmarshal_yaml").Printf
+	l := kemba.New("entity::Commands.UnmarshalYAML").Printf
 	temp := make(map[string]Command)
 
 	l("unmarshal to temp")
@@ -158,4 +159,9 @@ func processSourceLinks(rawCommand string) string {
 func (c *Commands) Get(name string) (Command, bool) {
 	cmd, ok := c.Cmds[name]
 	return cmd, ok
+}
+
+func (c *Commands) Has(name string) bool {
+	_, ok := c.Cmds[name]
+	return ok
 }
