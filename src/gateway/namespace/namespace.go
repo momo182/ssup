@@ -15,7 +15,7 @@ type Namespace struct {
 }
 
 func NewHostNamespace() entity.HostNamespace {
-	l := kemba.New("gateway::namespace::Namespace.NewHostNamespace").Printf
+	l := kemba.New("gateway::namespace::Namespace::NewHostNamespace").Printf
 	l("creating new namespace")
 
 	hns := entity.HostNamespace{}
@@ -87,16 +87,41 @@ func (n *Namespace) ParseEnvs(input string, host string) {
 }
 
 func (n *Namespace) SetFromEnvString(input string, host string) {
-	l := kemba.New("gateway::Namespace.SetFromEnvString").Printf
+	l := kemba.New("gateway::Namespace::SetFromEnvString").Printf
 	customNamespace := ""
 
 	l("check if host has port and drop port")
 	host = dropHostPort(host)
 
-	l("setting envs from string: %s", input)
+	l("host: %s", host)
+	l("setting envs from string:\n%s", input)
 	lines := strings.Split(input, "\n")
 	for _, line := range lines {
 		l("reading line: %s", line)
+		if line == "" {
+			l("skip empty line")
+			continue
+		}
+
+		if !strings.Contains(line, "=") {
+			l("failed to find = inside line: %s", line)
+			continue
+		}
+
+		// split on " " and count parts
+		parts := strings.Split(line, " ")
+		l("parts: %s", dump.Format(parts))
+		switch len(parts) {
+		case 1:
+			l("setting env for host: %s", host)
+		case 2:
+			l("tube found, setting env for tube: %s", parts[0])
+			line = parts[1]
+			host = parts[0]
+		default:
+			l("ERROR: failed to parse line: '%s'", line)
+			return
+		}
 
 		equalsLocation := strings.Index(line, "=")
 		// check we've found any = at all?
@@ -127,7 +152,7 @@ func (n *Namespace) SetFromEnvString(input string, host string) {
 		}
 
 		if n.hostStore[host].EnvStore == nil {
-			l("host store is nil, better create new")
+			l("host store is nil, creating new namespace: %s", host)
 			n.hostStore[host] = NewHostNamespace()
 		}
 

@@ -1,4 +1,4 @@
-package gateway
+package ssh
 
 import (
 	"bytes"
@@ -26,7 +26,6 @@ import (
 	svc "github.com/momo182/ssup/src/lobby"
 	spass "github.com/momo182/ssup/src/shared/checksshpass"
 	"github.com/samber/oops"
-	sf "github.com/wissance/stringFormatter"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -44,9 +43,10 @@ type SSHClient struct {
 	connOpened   bool
 	sessOpened   bool
 	running      bool
-	Env          entity.EnvList //export FOO="bar"; export BAR="baz";
+	Env          *entity.EnvList
 	Color        string
 	RcloneCfg    string
+	tube         string
 }
 
 func init() {
@@ -62,6 +62,18 @@ type ErrConnect struct {
 
 func (e ErrConnect) Error() string {
 	return fmt.Sprintf(`Connect("%v@%v"): %v`, e.User, e.Host, e.Reason)
+}
+
+func (c *SSHClient) GetHost() string {
+	return c.Host
+}
+
+func (c SSHClient) GetTube() string {
+	return c.tube
+}
+
+func (c *SSHClient) SetTube(name string) {
+	c.tube = name
 }
 
 func (c *SSHClient) SetRcloneCfg(config string) {
@@ -110,7 +122,7 @@ var authMethods []ssh.AuthMethod
 // initAuthMethod initiates SSH authentication method.
 // initAuthMethod initiates SSH authentication method.
 func initAuthMethod() {
-	l := kemba.New("gateway::ssh > initAuthMethod").Printf
+	l := kemba.New("gateway::ssh::initAuthMethod").Printf
 	l("initializing SSH authentication method")
 	var signers []ssh.Signer
 
@@ -202,7 +214,9 @@ func (c *SSHClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) err
 
 // Run runs the task.Run command remotely on c.host.
 func (c *SSHClient) Run(task *entity.Task) error {
+	l := kemba.New("gateway::ssh::Run").Printf
 	//nil check
+	l("negative programming checks")
 	if task == nil {
 		return errors.New("got nil task")
 	}
@@ -214,6 +228,17 @@ func (c *SSHClient) Run(task *entity.Task) error {
 		return fmt.Errorf("Session already connected")
 	}
 
+	// if task.Env len is != 0 append those
+	// to c.Env
+	l("append envs to client")
+	if len(task.Env.Keys()) != 0 {
+		// c.Env = append(c.Env, task.Env...)
+		for _, key := range task.Env.Keys() {
+			c.Env.Set(key, task.Env.Get(key))
+		}
+	}
+
+	l("setting pipes")
 	sess, err := c.conn.NewSession()
 	if err != nil {
 		return err
@@ -233,7 +258,9 @@ func (c *SSHClient) Run(task *entity.Task) error {
 	if err != nil {
 		return err
 	}
+	l("all pipes are set...")
 
+	l("prepping tty")
 	if task.TTY {
 		// Set up terminal modes
 		modes := ssh.TerminalModes{
@@ -249,6 +276,7 @@ func (c *SSHClient) Run(task *entity.Task) error {
 
 	// Start the remote command.
 	command := c.buildRemoteCommand(*task)
+	l("starting remote command: %v", command)
 	if err := sess.Start(command); err != nil {
 		return entity.ErrTask{Task: task, Reason: err.Error()}
 	}
@@ -256,6 +284,7 @@ func (c *SSHClient) Run(task *entity.Task) error {
 	c.sess = sess
 	c.sessOpened = true
 	c.running = true
+	l("done with Run func")
 	return nil
 }
 
@@ -288,7 +317,7 @@ func (c *SSHClient) Wait() error {
 	remoteName := "ssup_remote-" + uuid
 
 	l("check if rclone is available")
-	rclone := mustFindRclone()
+	rclone := lobby.MustFindRclone()
 
 	// check if host has port and cut it
 	removePortFromHostname(c)
@@ -464,7 +493,7 @@ func (c *SSHClient) Upload(localPath, remotePath string, config string) error {
 	remoteName := "ssup_remote-" + uuid
 
 	l("check if rclone is available")
-	rclone := mustFindRclone()
+	rclone := lobby.MustFindRclone()
 
 	// check if host has port and cut it
 	removePortFromHostname(c)
@@ -485,7 +514,14 @@ func (c *SSHClient) Upload(localPath, remotePath string, config string) error {
 	}
 
 	l("prepare copy command")
-	copyCommand := exec.Command(rclone, "--config", config, "--exclude", ".git/", "-P", rcloneCopyCmd, localPath, remoteName+":"+remotePath)
+	// check if localPath is a directory
+	var copyCommand *exec.Cmd
+	switch fsutil.IsDir(localPath) {
+	case true:
+		copyCommand = exec.Command(rclone, "--config", config, "--exclude", ".git/", "-P", rcloneCopyCmd, localPath, remoteName+":"+remotePath)
+	default:
+		copyCommand = exec.Command(rclone, "--config", config, "-P", rcloneCopyCmd, localPath, remoteName+":"+remotePath)
+	}
 
 	l("public run command: %v", copyCommand)
 	copyCommand.Stdout = os.Stdout
@@ -579,7 +615,7 @@ func (c *SSHClient) GenerateOnRemote(data []byte) error {
 	config := c.RcloneCfg
 	oldCmd := string(data)
 	data = []byte(lobby.RegisterCmd + oldCmd)
-	l("processing:\ndump: FC693B9D-DA60-4DA9-B783-647270E27BBC\n%s", string(addNumbers(data)))
+	l("processing:\ndump: FC693B9D-DA60-4DA9-B783-647270E27BBC\n%s", string(lobby.Lobby.Shellcheck.AddNumbers(data)))
 
 	uuid, e := uuid.GenerateUUID()
 	if e != nil {
@@ -597,7 +633,7 @@ func (c *SSHClient) GenerateOnRemote(data []byte) error {
 	l(debugData)
 
 	l("check if rclone is available")
-	rclone := mustFindRclone()
+	rclone := lobby.MustFindRclone()
 
 	// check if host has port and cut it
 	removePortFromHostname(c)
@@ -659,26 +695,6 @@ func createRcloneConfig(rclone string, remoteName string, c *SSHClient, config s
 	return nil
 }
 
-func mustFindRclone() string {
-	rclone, e := exec.LookPath("rclone")
-	if e != nil {
-		fmt.Println("Please install rclone on your system, and make it available in $PATH")
-		os.Exit(11)
-	}
-	return rclone
-}
-
-func addNumbers(data []byte) []byte {
-	var r []byte
-	asStrings := strings.Split(string(data), "\n")
-	for id, line := range asStrings {
-		var byteLine []byte
-		byteLine = append([]byte(fmt.Sprintf("%3.d: ", id)), []byte(line+"\n")...)
-		r = append(r, byteLine...)
-	}
-	return r
-}
-
 // buildRemoteCommand constructs the command string to be run on the remote host.
 func (c *SSHClient) buildRemoteCommand(task entity.Task) string {
 	l := kemba.New("SSHClient.build_remote_command").Printf
@@ -690,58 +706,9 @@ func (c *SSHClient) buildRemoteCommand(task entity.Task) string {
 	sudoPassword := c.Password
 	Env := c.Env
 
-	if len(task.Env) > 0 {
-		for _, v := range task.Env {
-			l("injecting task env: %s=%s", v.Key, v.Value)
-			Env.Set(v.Key, v.Value)
-		}
-	}
+	finalEnv := lobby.InjectNamespacesAndEnvs(task, *Env, c)
+	command = lobby.FormatCommandBasedOnSudo(sudo, sudoPassword, finalEnv, exportCmd, scriptName, command, c, task)
 
-	nsEnvs := lobby.Lobby.Namespaces.Get(c.Host)
-	if len(nsEnvs.EnvStore) > 0 {
-		for k, v := range nsEnvs.EnvStore {
-			l("injecting namespace env: %s=%s", k, v)
-			Env.Set(k, v)
-		}
-
-	}
-
-	// `register` bash function is injected here, injected only for non sudo invocations
-	// if sudo is set to true, the command will be wrapped into script
-	// and and remote command will just execute that script
-	//
-	// which means we have to inject the command into a script for sudo invocation too
-	// and that happens to hapen inside
-	// func (c *SSHClient) GenerateOnRemote(data []byte) error
-	// which shares the same code defined in lobby.RegisterCmd
-
-	l("checking for SUP_SUDO")
-	switch sudo {
-	case true:
-		l("wrapping command into SUDO block:")
-		data := map[string]any{
-			"sudo_pass":        sudoPassword,
-			"env_setup":        Env.AsExport(),
-			"export_command":   exportCmd,
-			"ssup_script_name": scriptName,
-			"vars_tail":        entity.VARS_TAIL,
-		}
-		command = sf.FormatComplex("echo {sudo_pass} | sudo -S bash -c '{env_setup} chmod +x ./{ssup_script_name};bash ./{ssup_script_name}; rm -rf ./*{ssup_script_name}'", data)
-
-		if err := c.GenerateOnRemote([]byte(task.Run)); err != nil {
-			log.Panic("failed to generate remote command", err)
-		}
-
-	default:
-		data := map[string]any{
-			"command":        strings.TrimSpace(command) + "\n\n",
-			"env_setup":      Env.AsExport(),
-			"export_command": exportCmd,
-			"vars_tail":      entity.VARS_TAIL,
-		}
-		command = sf.FormatComplex("{env_setup}{command}", data)
-	}
-	l("command: %s", command)
-
+	l("done building command")
 	return command
 }

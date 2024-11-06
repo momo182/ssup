@@ -12,16 +12,16 @@ import (
 )
 
 func ResolveValues(e *entity.EnvList) error {
-	l := kemba.New("usecase > ResolveValues").Printf
-	if len(*e) == 0 {
+	l := kemba.New("usecase::ResolveValues").Printf
+	if len(e.Keys()) == 0 {
 		return nil
 	}
 
 	exports := ""
-	for i, v := range *e {
+	for _, key := range e.Keys() {
 		// inspect the value as a shell variable
-		value := v.Value
-		l("looking for env: %v, var: %v", v.Key, value)
+		value := e.Get(key)
+		l("looking for env: %v, var: %v", key, value)
 		// check if value is prefixed with `$(`
 		if shellresolve.IsShell(value) {
 			value, e := shellresolve.ResolveShell(value)
@@ -31,6 +31,10 @@ func ResolveValues(e *entity.EnvList) error {
 					With("value", value).
 					Wrap(e)
 			}
+		}
+		v := &entity.EnvVar{
+			Key:   key,
+			Value: value,
 		}
 
 		exports += v.AsExport()
@@ -46,7 +50,7 @@ func ResolveValues(e *entity.EnvList) error {
 			return errors.Wrapf(err, "resolving env var %v failed", v.Key)
 		}
 
-		(*e)[i].Value = string(resolvedValue)
+		e.Set(key, string(resolvedValue))
 	}
 
 	return nil

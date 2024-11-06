@@ -1,9 +1,11 @@
-package gateway
+package localhost
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"os/user"
@@ -11,7 +13,10 @@ import (
 	"github.com/bitfield/script"
 	"github.com/clok/kemba"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/gookit/goutil/dump"
+	"github.com/gookit/goutil/fsutil"
 	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/lobby"
 	"github.com/samber/oops"
 )
 
@@ -20,11 +25,25 @@ type LocalhostClient struct {
 	cmd       *exec.Cmd
 	user      string
 	stdin     io.WriteCloser
+	Host      string
 	stdout    io.Reader
 	stderr    io.Reader
 	running   bool
-	Env       entity.EnvList //export FOO="bar"; export BAR="baz";
+	Env       *entity.EnvList //export FOO="bar"; export BAR="baz";
 	RcloneCfg string
+	tube      string
+}
+
+func (c *LocalhostClient) GetHost() string {
+	return c.Host
+}
+
+func (c LocalhostClient) GetTube() string {
+	return c.tube
+}
+
+func (c *LocalhostClient) SetTube(name string) {
+	c.tube = name
 }
 
 func (c *LocalhostClient) Connect(_ entity.NetworkHost) error {
@@ -42,15 +61,35 @@ func (c *LocalhostClient) SetRcloneCfg(config string) {
 }
 
 func (c *LocalhostClient) Run(task *entity.Task) error {
+	l := kemba.New("gateway::localhost::Run").Printf
 	var err error
 
+	l(fmt.Sprintf("Running task: %s", dump.Format(task.Env)))
 	if c.running {
 		return fmt.Errorf("Command already running")
 	}
 
-	cmd := exec.Command("bash", "-c", c.Env.AsExport()+task.Run)
+	// if task.Env len is != 0 append those
+	// to c.Env
+	if len(task.Env.Keys()) != 0 {
+		// c.Env = append(c.Env, task.Env...)
+		for _, key := range task.Env.Keys() {
+			c.Env.Set(key, task.Env.Get(key))
+		}
+	}
+
+	// oldInvocation := []string{"bash", "-c", c.Env.AsExport()+task.Run}
+	newInvocation := c.buildLocalCommand(*task)
+	l("dump: B1DA9A9A-452B-4739-A8D8-15AEEA0D658D")
+	l(dump.Format(newInvocation))
+	cmd := exec.Command("bash", "-c", newInvocation)
+	// cmd.Stdin = bytes.NewReader([]byte(newInvocation))
 	c.cmd = cmd
 
+	l("prepared command: %s", cmd.String())
+	l("^^^ this should have vars exported !!!!")
+
+	l("as for the pipes...")
 	c.stdout, err = cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -65,8 +104,11 @@ func (c *LocalhostClient) Run(task *entity.Task) error {
 	if err != nil {
 		return err
 	}
+	l("all pipes are set up")
 
+	l("starting local party")
 	if err := c.cmd.Start(); err != nil {
+		l("sometimes even local party can fail")
 		return entity.ErrTask{Task: task, Reason: err.Error()}
 	}
 
@@ -75,11 +117,56 @@ func (c *LocalhostClient) Run(task *entity.Task) error {
 }
 
 func (c *LocalhostClient) Wait() error {
+	l := kemba.New("localhost::Wait").Printf
+	home, err := os.UserHomeDir()
+	if err != nil {
+		oops.Trace("FBF3ADC1-871C-492C-A53B-51765E0473A6").
+			Hint("getting home dir").
+			With("home", home).
+			Wrap(err)
+	}
+
+	defer func() {
+
+		tgt := home + "/" + entity.VARS_TAIL
+		l("cleanup: %s", tgt)
+		// no error handling here is OKayish for the moment
+		os.Remove(tgt)
+	}()
+
 	if !c.running {
 		return fmt.Errorf("Trying to wait on stopped command")
 	}
-	err := c.cmd.Wait()
+	err = c.cmd.Wait()
+	if err != nil {
+		oops.Trace("B4730A7E-1E1A-478B-A499-51FEB83BCD88").
+			Hint("waiting for command").
+			Wrap(err)
+	}
 	c.running = false
+
+	l("grab vars from the run")
+	// if home+"/"+entity.VARS_TAIL exists, read it, else skip
+	if _, err := os.Stat(home + "/" + entity.VARS_TAIL); errors.Is(err, fs.ErrNotExist) {
+		l("no vars file found, skipping")
+	} else {
+		envsPull := exec.Command("cat", home+"/"+entity.VARS_TAIL)
+		l("will run command to pull envs: %s", envsPull.Args)
+		envlines, e := envsPull.CombinedOutput()
+		if e != nil {
+			return oops.Trace("96827050-82E3-4CB3-B6D2-DE5EA1FA48C2").
+				Hint("pulling envs from localhost").
+				With("output", envlines).
+				Wrap(e)
+		}
+
+		l("output:\n%s", envlines)
+		c.Host = "localhost"
+		lobby.Lobby.Namespaces.SetFromEnvString(string(envlines), c.Host)
+		data := lobby.Lobby.Namespaces.Get(c.Host)
+		l("data:\n%s", dump.Format(data))
+	}
+
 	return err
 }
 
@@ -133,7 +220,7 @@ func (c *LocalhostClient) Signal(sig os.Signal) error {
 // }
 
 func (c *LocalhostClient) Upload(src, dst string, config string) error {
-	l := kemba.New("sshclient.Upload").Printf
+	l := kemba.New("localclient.Upload").Printf
 
 	is_rclone := script.Exec("sh -c 'which rclone'").ExitStatus() == 0
 	if !is_rclone {
@@ -141,7 +228,14 @@ func (c *LocalhostClient) Upload(src, dst string, config string) error {
 		os.Exit(13)
 	}
 
-	copyCommand := exec.Command("rclone", "--config", config, "--exclude", ".git/", "-P", "copyto", src, dst)
+	var copyCommand *exec.Cmd
+	switch fsutil.IsDir(src) {
+	case true:
+		copyCommand = exec.Command("rclone", "--config", config, "--exclude", ".git/", "-P", "copyto", src, dst)
+	default:
+		copyCommand = exec.Command("rclone", "--config", config, "-P", "copyto", src, dst)
+	}
+
 	copyCommand.Stdout = os.Stdout
 	copyCommand.Stderr = os.Stderr
 
@@ -161,7 +255,7 @@ func (c *LocalhostClient) Upload(src, dst string, config string) error {
 }
 
 func (c *LocalhostClient) Download(src, dst string, silent bool) error {
-	l := kemba.New("sshclient.Upload").Printf
+	l := kemba.New("localclient.Download").Printf
 	config := c.RcloneCfg
 
 	is_rclone := script.Exec("sh -c 'which rclone'").ExitStatus() == 0
@@ -193,7 +287,7 @@ func (c *LocalhostClient) Download(src, dst string, silent bool) error {
 
 func (c *LocalhostClient) GenerateOnRemote(data []byte) error {
 	l := kemba.New("sshclient.GenerateOnRemote").Printf
-	l("processing:\ndump: 19E5FE65-20A8-4050-992E-F3FA5A7AFFCF\n%s", string(addNumbers(data)))
+	l("processing:\ndump: 19E5FE65-20A8-4050-992E-F3FA5A7AFFCF\n%s", string(lobby.Lobby.Shellcheck.AddNumbers(data)))
 	home, e := os.UserHomeDir()
 	if e != nil {
 		return oops.Trace("C603225E-0928-4613-A4AB-8E0CAE1C4D10").
@@ -208,7 +302,7 @@ func (c *LocalhostClient) GenerateOnRemote(data []byte) error {
 	l(debugData)
 
 	l("check if rclone is available")
-	rclone := mustFindRclone()
+	rclone := lobby.MustFindRclone()
 
 	l(fmt.Sprintf("copy:\n    src: %s\n    dest: %s\n", "user data", dest))
 	l("prepare rcat command")
@@ -216,4 +310,21 @@ func (c *LocalhostClient) GenerateOnRemote(data []byte) error {
 	copyCommand.Stdin = bytes.NewReader(data)
 	l(fmt.Sprintf("copy:\n    src: %s\n    dest: %s\n", "user data", dest))
 	return nil
+}
+
+// buildRemoteCommand constructs the command string to be run on the remote host.
+func (c *LocalhostClient) buildLocalCommand(task entity.Task) string {
+	l := kemba.New("LocalhostClient.build_remote_command").Printf
+
+	command := lobby.RegisterCmd + task.Run
+	sudo := task.Sudo
+	scriptName := entity.TASK_TAIL
+	exportCmd := "export"
+	sudoPassword := ""
+	Env := c.Env
+
+	finalEnv := lobby.InjectNamespacesAndEnvs(task, *Env, c)
+	command = lobby.FormatCommandBasedOnSudo(sudo, sudoPassword, finalEnv, exportCmd, scriptName, command, c, task)
+	l("done building command")
+	return command
 }

@@ -13,8 +13,9 @@ func GenerateSUPENVFrom(cliVars entity.EnvList, vars entity.EnvList) {
 	// SUP_ENV is generated only from CLI env vars.
 	// Separate loop to omit duplicates.
 	supEnv := ""
-	for _, v := range cliVars {
-		supEnv += fmt.Sprintf(" -e %v=%q", v.Key, v.Value)
+	for _, key := range cliVars.Keys() {
+		value := cliVars.Get(key)
+		supEnv += fmt.Sprintf(" -e %v=%q", key, value)
 	}
 	vars.Set("SUP_ENV", strings.TrimSpace(supEnv))
 }
@@ -62,10 +63,12 @@ func MergeVars(conf *entity.Supfile, network *entity.Network) entity.EnvList {
 
 	// Iterate over the list of environment variables in conf and network
 	l("looping over merged env vars")
-	for _, val := range append(conf.Env, network.Env...) {
+	// to conf,Env from network.Env
+	for _, key := range conf.Env.Keys() {
+		value := conf.Env.Get(key)
 		// Add the environment variable to the vars list
-		l("adding env var: %v = %v ", val.Key, val.Value)
-		vars.Set(val.Key, val.Value)
+		l("adding env var: %v = %v ", key, value)
+		vars.Set(key, value)
 	}
 
 	// Resolve the values in the vars list

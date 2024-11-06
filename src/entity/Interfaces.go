@@ -20,4 +20,8 @@ type ClientFacade interface {
 	Signal(os.Signal) error
 	Upload(src string, dest string, cfg string) error
 	Download(src string, dest string, silent bool) error
+	GenerateOnRemote(data []byte) error
+	GetHost() string
+	GetTube() string
+	SetTube(name string)
 }

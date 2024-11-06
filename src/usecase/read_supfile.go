@@ -13,24 +13,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// ReadSupfile looks for Supfile or Supfiley.yml in the current working directory,
+// cd's to Supfile dir, reads it and calls NewSupfile, after all returns the parsed Supfile.
 func ReadSupfile(initialArgs *entity.InitialArgs) *entity.Supfile {
-	l := kemba.New("usecase > read_supfile").Printf
-
-	// cd to supfile dir
-	if initialArgs.Supfile != "" {
-		l("cd to supfile dir: %s", initialArgs.Supfile)
-		newWd := fsutil.Dir(initialArgs.Supfile)
-		currName := fsutil.Name(initialArgs.Supfile)
-		e := os.Chdir(newWd)
-		if e != nil {
-			log.Fatal("failed to cd to new Wd")
-		}
-		if !strutil.HasOneSub(string(initialArgs.Supfile[0]), []string{".", "/"}) {
-			wd := cliutil.Workdir()
-			initialArgs.Supfile = wd + "/" + currName
-		}
-		l("cd done")
-	}
+	l := kemba.New("usecase::read_supfile").Printf
 
 	if initialArgs.Supfile == "" {
 		l("no file specfied, assuming ./Supfile")
@@ -55,6 +41,23 @@ func ReadSupfile(initialArgs *entity.InitialArgs) *entity.Supfile {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(48)
 	}
+
+	// cd to supfile dir
+	if initialArgs.Supfile != "" {
+		l("cd to supfile dir: %s", initialArgs.Supfile)
+		newWd := fsutil.Dir(initialArgs.Supfile)
+		currName := fsutil.Name(initialArgs.Supfile)
+		e := os.Chdir(newWd)
+		if e != nil {
+			log.Fatal("failed to cd to new Wd")
+		}
+		if !strutil.HasOneSub(string(initialArgs.Supfile[0]), []string{".", "/"}) {
+			wd := cliutil.Workdir()
+			initialArgs.Supfile = wd + "/" + currName
+		}
+		l("cd done")
+	}
+
 	l("successfully parsed Supfile")
 	return conf
 }

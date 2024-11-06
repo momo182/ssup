@@ -3,6 +3,7 @@ package shellcheck
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/bitfield/script"
 	"github.com/momo182/ssup/src/entity"
@@ -15,6 +16,8 @@ func New() *ShellCheck {
 	return &ShellCheck{}
 }
 
+// Check runs shellcheck with the contents of the
+// local: or run: blocks
 func (s *ShellCheck) Check(cmd string) error {
 	_, err := exec.LookPath("shellcheck")
 	if err == nil {
@@ -29,4 +32,16 @@ func (s *ShellCheck) Check(cmd string) error {
 		}
 	}
 	return nil
+}
+
+// AddNumbers adds numbers to each line
+func (s *ShellCheck) AddNumbers(data []byte) []byte {
+	var r []byte
+	asStrings := strings.Split(string(data), "\n")
+	for id, line := range asStrings {
+		var byteLine []byte
+		byteLine = append([]byte(fmt.Sprintf("%3.d: ", id)), []byte(line+"\n")...)
+		r = append(r, byteLine...)
+	}
+	return r
 }

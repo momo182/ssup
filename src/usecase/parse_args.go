@@ -22,6 +22,7 @@ func ParseInitialArgs(conf *entity.Supfile, envFromArgs entity.FlagStringSlice) 
 	args := flag.Args()
 
 	switch {
+	// no args given
 	case len(args) < 1:
 		networkUsage(conf)
 		cmdUsage(conf)
@@ -31,9 +32,11 @@ func ParseInitialArgs(conf *entity.Supfile, envFromArgs entity.FlagStringSlice) 
 		l("check if all args are commands")
 		if len(conf.Networks.Names) == 0 {
 			l("no name of network")
-			// test that all other args are commands or targets
+			l("test that all other args are commands or targets")
 			for _, cmd := range args[1:] {
 				if !conf.Targets.Has(cmd) && !conf.Commands.Has(cmd) {
+					l("tested both Commands and Targets")
+					l("unknown command: %v", cmd)
 					networkUsage(conf)
 					cmdUsage(conf)
 					return nil, nil, fmt.Errorf("%v: %v", entity.ErrCmd, cmd)
@@ -86,10 +89,10 @@ func ParseInitialArgs(conf *entity.Supfile, envFromArgs entity.FlagStringSlice) 
 		return nil, nil, entity.ErrUsage
 	}
 
-	l("in case of the network.Env needs an initialization")
-	if network.Env == nil {
-		network.Env = make(entity.EnvList, 0)
-	}
+	// l("in case of the network.Env needs an initialization")
+	// if network.Env == nil {
+	// 	network.Env = entity.EnvList{}
+	// }
 
 	l("add default env variable with current network")
 	network.Env.Set("SUP_NETWORK", args[0])
@@ -152,6 +155,12 @@ func cmdUsage(conf *entity.Supfile) {
 		cmds, _ := conf.Targets.Get(name)
 		fmt.Fprintf(w, "- %v\t%v\n", name, strings.Join(cmds, " "))
 	}
+
+	if conf.Desc != "" {
+		fmt.Fprintln(w, "Description:\t")
+		fmt.Fprintf(w, "%v", conf.Desc)
+	}
+
 	fmt.Fprintln(w, "\t")
 	fmt.Fprintln(w, "Commands:\t")
 	for _, name := range conf.Commands.Names {
@@ -176,4 +185,8 @@ func networkUsage(conf *entity.Supfile) {
 		}
 	}
 	fmt.Fprintln(w)
+}
+
+func makefileUsage() {
+	fmt.Println("No networks defined, makefile mode available")
 }

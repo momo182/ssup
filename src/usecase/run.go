@@ -13,7 +13,8 @@ import (
 	"github.com/gookit/goutil/fsutil"
 	"github.com/goware/prefixer"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/gateway"
+	clientLocal "github.com/momo182/ssup/src/gateway/localhost"
+	clientSSH "github.com/momo182/ssup/src/gateway/ssh"
 	"github.com/pkg/errors"
 	"github.com/samber/oops"
 	"golang.org/x/crypto/ssh"
@@ -78,7 +79,7 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 	maxLen := 0
 	var clients []entity.ClientFacade = make([]entity.ClientFacade, 0)
 	for client := range clientCh {
-		if remote, ok := client.(*gateway.SSHClient); ok {
+		if remote, ok := client.(*clientSSH.SSHClient); ok {
 			defer remote.Close()
 		}
 		_, prefixLen := client.Prefix()
@@ -92,6 +93,7 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 			Hint("connecting to clients failed").
 			Wrap(err)
 	}
+	l("connected to all clients")
 
 	// Run command or run multiple commands defined by target sequentially.
 	for _, cmd := range commands {
@@ -242,7 +244,9 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 	return nil
 }
 
-func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env entity.EnvList, errCh chan error, clientCh chan entity.ClientFacade, bastion *gateway.SSHClient) {
+func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env entity.EnvList, errCh chan error, clientCh chan entity.ClientFacade, bastion *clientSSH.SSHClient) {
+	l := kemba.New("usecase::run::connectToHosts").Printf
+	l("will range over hosts: %v", len(network.Hosts))
 	for i, host := range network.Hosts {
 		wg.Add(1)
 		go func(i int, host entity.NetworkHost) {
@@ -250,9 +254,19 @@ func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env entity.EnvL
 
 			// localhost client
 			if host.Host == "localhost" || host.Host == "127.0.0.1" {
-				local := &gateway.LocalhostClient{
-					Env: append(env, &entity.EnvVar{Key: "SUP_HOST", Value: host.Host}),
+				l("found localhost")
+				envStore := new(entity.EnvList)
+				envStore.Set("SUP_HOST", host.Host)
+				local := &clientLocal.LocalhostClient{
+					Env: envStore,
 				}
+
+				if host.Tube != "" {
+					l("will inject tube: %s", host.Tube)
+					local.SetTube(host.Tube)
+				}
+
+				l("about to connect to localhost")
 				if err := local.Connect(host); err != nil {
 					errCh <- errors.Wrap(err, "connecting to localhost failed")
 					return
@@ -260,26 +274,40 @@ func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env entity.EnvL
 				clientCh <- local
 				return
 			}
+			l("found remote host: %s", host.Host)
 
 			// SSH client
+			l("password check for host")
 			pass := host.Password
 			if pass == "" && network.Password != "" {
 				pass = network.Password
 			}
 
-			remote := &gateway.SSHClient{
-				Env:      append(env, &entity.EnvVar{Key: "SUP_HOST", Value: host.Host}),
+			l("filling in user,env and creds")
+			envStore := new(entity.EnvList)
+			envStore.Set("SUP_HOST", host.Host)
+			remote := &clientSSH.SSHClient{
+				Env:      envStore,
 				User:     network.User,
 				Color:    entity.Colors[i%len(entity.Colors)],
 				Password: pass,
 			}
 
+			if host.Tube != "" {
+				l("will inject tube: %s", host.Tube)
+				remote.SetTube(host.Tube)
+			}
+
+			l("about to connect to remote host")
+
 			if bastion != nil {
+				l("bastion is set, trying it now")
 				if err := remote.ConnectWith(host, bastion.DialThrough); err != nil {
 					errCh <- errors.Wrap(err, "connecting to remote host through bastion failed")
 					return
 				}
 			} else {
+				l("connecting via direct connection")
 				if err := remote.Connect(host); err != nil {
 					errCh <- errors.Wrap(err, "connecting to remote host failed")
 					return
@@ -291,17 +319,22 @@ func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env entity.EnvL
 	return
 }
 
-func (*Stackup) connectToBastionHost(network *entity.Network) (*gateway.SSHClient, error) {
-	var bastion *gateway.SSHClient
+func (*Stackup) connectToBastionHost(network *entity.Network) (*clientSSH.SSHClient, error) {
+	l := kemba.New("usecase::run::connectToBastionHost").Printf
+
+	l("prepping ssh client to bastion: %s", network.Bastion)
+	var bastion *clientSSH.SSHClient
 	if network.Bastion != "" {
-		bastion = &gateway.SSHClient{}
+		bastion = &clientSSH.SSHClient{}
 		bastionHost := entity.NetworkHost{
 			Host: network.Bastion,
 		}
+		l("launch client connection to bastion")
 		if err := bastion.Connect(bastionHost); err != nil {
 			return nil, errors.Wrap(err, "connecting to bastion failed")
 		}
 	}
+	l("done with bastion connection")
 	return bastion, nil
 }
 

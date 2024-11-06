@@ -11,7 +11,7 @@ import (
 )
 
 func CheckInitialArgs(network *entity.Network, initialArgs *entity.InitialArgs) {
-	l := kemba.New("usecase > CheckInitialArgs").Printf
+	l := kemba.New("usecase::CheckInitialArgs").Printf
 
 	l("--only flag filters hosts")
 	if initialArgs.OnlyHosts != "" {

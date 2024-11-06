@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -8,7 +9,7 @@ import (
 	"github.com/clok/kemba"
 	"github.com/gookit/goutil/dump"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/gateway"
+	"github.com/momo182/ssup/src/gateway/localhost"
 	"github.com/pkg/errors"
 	"github.com/samber/oops"
 )
@@ -65,8 +66,10 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 	// Local command.
 	l("check if local command")
 	if cmd.Local != "" {
-		local := &gateway.LocalhostClient{
-			Env: append(env, &entity.EnvVar{Key: "SUP_HOST", Value: "localhost"}),
+		envStore := new(entity.EnvList)
+		envStore.Set("SUP_HOST", "localhost")
+		local := &localhost.LocalhostClient{
+			Env: envStore,
 		}
 		localHost := entity.NetworkHost{
 			Host: "localhost",
@@ -129,9 +132,16 @@ func appendCommandEnvsToTask(cmd *entity.Command, task *entity.Task) {
 
 	l("check if command had envs")
 
-	if len(cmd.Env) > 0 {
+	if len(cmd.Env.Keys()) > 0 {
 		l("command had some env, applying envs to task")
-		task.Env = append(task.Env, cmd.Env...)
+		// task.Env = append(task.Env, cmd.Env...)
+		dest := task.Env
+		source := cmd.Env
+		// append every task from source to dest
+		for _, key := range source.Keys() {
+			value := source.Get(key)
+			dest.Set(key, value)
+		}
 	}
 
 	l("dump: 65589739-F0F5-4D96-A535-07684F4F5CC0")
@@ -166,16 +176,17 @@ func openAndReadFile(cmd *entity.Command) ([]byte, error) {
 }
 
 func decorateTaskDetails(args *entity.InitialArgs, task *entity.Task, cmd *entity.Command) {
+	l := kemba.New("usecase::decorate_task_details").Printf
 	if task == nil {
-		log.Panic("06878814-005A-427D-B810-1B68739837B1: got null task")
+		fmt.Println("06878814-005A-427D-B810-1B68739837B1: got null task")
 	}
 
 	if cmd == nil {
-		log.Panic("47DA54BE-919F-4E40-B7CE-8D8F89CCAE66: got null command")
+		fmt.Println("47DA54BE-919F-4E40-B7CE-8D8F89CCAE66: got null command")
 	}
 
 	if args == nil {
-		log.Panic("FB2520DC-4C49-4F43-9A84-C0630EF59579: got null args")
+		fmt.Println("FB2520DC-4C49-4F43-9A84-C0630EF59579: got null args")
 	}
 
 	if args.Debug {
@@ -185,6 +196,9 @@ func decorateTaskDetails(args *entity.InitialArgs, task *entity.Task, cmd *entit
 	if cmd.Stdin {
 		task.Input = os.Stdin
 	}
+	l("dump: 35C3F8BB-1FAC-4C47-B996-C513AF335CA7")
+	l("task about to run here:")
+	l(dump.Format(task))
 }
 
 func processClientsInGroups(clients []entity.ClientFacade, cmd *entity.Command, task entity.Task, tasks []*entity.Task) []*entity.Task {
