@@ -34,6 +34,8 @@ func init() {
 
 	flag.BoolVar(&initialArgs.ShowVersion, "v", false, "Print version")
 	flag.BoolVar(&initialArgs.ShowVersion, "version", false, "Print version")
+	flag.BoolVar(&initialArgs.DisableColor, "c", false, "Disable color")
+	flag.BoolVar(&initialArgs.DisableColor, "no-color", false, "Disable color")
 	flag.BoolVar(&initialArgs.ShowHelp, "h", false, "Show help")
 	flag.BoolVar(&initialArgs.ShowHelp, "help", false, "Show help")
 
@@ -65,7 +67,7 @@ func main() {
 	conf := usecase.ReadSupfile(initialArgs)
 
 	l("parse network and commands to be run from args")
-	network, commands, err := usecase.ParseInitialArgs(conf, initialArgs.EnvVars)
+	network, commands, err := usecase.ParseInitialArgs(conf, initialArgs)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
