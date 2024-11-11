@@ -12,8 +12,9 @@ type InitialArgs struct {
 	Debug         bool
 	DisablePrefix bool
 
-	ShowVersion bool
-	ShowHelp    bool
+	ShowVersion  bool
+	ShowHelp     bool
+	DisableColor bool
 }
 
 type FlagStringSlice []string

@@ -58,7 +58,8 @@ func (h *helpDisplayer) printBWHelp(conf *entity.Supfile) {
 
 // ParseInitialArgs parses args and returns network and commands to be run.
 // On error, it prints usage and exits.
-func ParseInitialArgs(conf *entity.Supfile, envFromArgs entity.FlagStringSlice) (*entity.Network, []*entity.Command, error) {
+func ParseInitialArgs(conf *entity.Supfile, initialArgs *entity.InitialArgs) (*entity.Network, []*entity.Command, error) {
+	envFromArgs := initialArgs.EnvVars
 	var commands []*entity.Command
 	args := flag.Args()
 	helpMenu := helpDisplayer{}
@@ -67,6 +68,10 @@ func ParseInitialArgs(conf *entity.Supfile, envFromArgs entity.FlagStringSlice) 
 	// dont trust windows on colors, nushell over ssh played bad
 	// don't expect this will be better
 	if osutil.IsWindows() {
+		helpMenu.Color = false
+	}
+
+	if initialArgs.DisableColor {
 		helpMenu.Color = false
 	}
 
