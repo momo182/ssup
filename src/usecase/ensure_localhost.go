@@ -17,7 +17,7 @@ func EnsureLocalhost(supFile *entity.Supfile) {
 			}
 		}
 	}
-	l("got localhost: %v", gotLocal)
+	l("got localhost defined: %v", gotLocal)
 
 	if !gotLocal {
 		l("adding localhost network")

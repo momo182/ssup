@@ -10,7 +10,7 @@ import (
 // ResolveLocalPath - Use bash to resolve $ENV_VARs.
 // like: `~/dir` or `$HOME/dir`
 func ResolveLocalPath(cwd, path, env string) (string, error) {
-	l := kemba.New("usecase > ResolveLocalPath").Printf
+	l := kemba.New("usecase::ResolveLocalPath").Printf
 	// Check if file exists first.
 	l("resolving variable: " + path)
 	cmd := exec.Command("bash", "-c", env+"echo -n "+path)

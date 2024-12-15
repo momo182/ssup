@@ -1,0 +1,20 @@
+---
+version: 0.5
+desc: |
+  Supfile used for internal testing
+  Makefile mode
+
+
+env:
+  FOO: bar
+
+commands:
+  cmd1:
+    desc: cmd 1 description
+    local: |
+      exit 0
+
+  cmd2:
+    desc: cmd 2 description
+    local: |
+      exit 0

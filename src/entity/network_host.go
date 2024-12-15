@@ -84,7 +84,8 @@ func checkHostsForm(host string) NetworkHost {
 		"passwordEnd":   passwordEnd,
 		"tubeNameEnd":   tubeNameEnd,
 	}
-	l("dump: DE462638-4225-44C6-852F-4F20AEEC2A0D", spew.Sdump(positions))
+	l("dump: DE462638-4225-44C6-852F-4F20AEEC2A0D")
+	l("%s", spew.Sdump(positions))
 
 	if passwordStart < 0 && tubeNameStart < 0 {
 		l("no pass and tube found")

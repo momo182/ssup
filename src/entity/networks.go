@@ -1,6 +1,11 @@
 package entity
 
-import "gopkg.in/yaml.v2"
+import (
+	"fmt"
+	"os"
+
+	"gopkg.in/yaml.v2"
+)
 
 // Networks is a list of user-defined networks
 type Networks struct {
@@ -20,9 +25,25 @@ func (n *Networks) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
+	// TODO fix this
 	n.Names = make([]string, len(items))
 	for i, item := range items {
-		n.Names[i] = item.Key.(string)
+		// dump.Print(item)
+
+		netName := item.Key.(string)
+		// network := item.Value.(yaml.MapItem)
+		n.Names[i] = netName
+		thisNet, ok := n.Get(netName)
+		if !ok {
+			fmt.Printf("ERR: 03A4FF08-3E6A-4AD5-8A49-B0A1A8AFCD96"+
+				"failed to get network: %s\n", netName)
+			os.Exit(1)
+		}
+
+		thisNet.Name = netName
+		// dump.Print(thisNet)
+		n.Nets[netName] = thisNet
+
 	}
 
 	return nil

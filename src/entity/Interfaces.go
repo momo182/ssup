@@ -25,3 +25,7 @@ type ClientFacade interface {
 	GetTube() string
 	SetTube(name string)
 }
+
+type ArgParserFacade interface {
+	Parse(conf *Supfile, initialArgs *InitialArgs, helpMenu HelpDisplayer) (*PlayBook, error)
+}

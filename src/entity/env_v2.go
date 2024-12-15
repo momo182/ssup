@@ -74,13 +74,12 @@ func (e *EnvList) UnmarshalYAML(unmarshal func(interface{}) error) error {
 func (e *EnvList) Set(key, value string) {
 	l := kemba.New("env::set").Printf
 
-	l("check if underlying map is nil")
 	if e.store == nil {
 		l("underlying map is nil, creating new map")
 		e.store = make(map[string]string, 0)
 	}
 
-	l("setting %v = %v other keys", key, value)
+	l("setting %v = %v", key, value)
 	e.store[key] = value
 }
 

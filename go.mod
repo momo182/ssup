@@ -16,6 +16,7 @@ require (
 	github.com/samber/oops v1.12.1
 	github.com/samber/oops/loggers/logrus v0.0.0-20240810132522-5ce4f5a2281f
 	github.com/sirupsen/logrus v1.9.3
+	github.com/stretchr/testify v1.9.0
 	github.com/wissance/stringFormatter v1.2.0
 	golang.org/x/crypto v0.23.0
 	gopkg.in/yaml.v2 v2.2.8
@@ -28,7 +29,9 @@ require (
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (

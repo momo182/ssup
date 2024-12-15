@@ -15,6 +15,7 @@ type InitialArgs struct {
 	ShowVersion  bool
 	ShowHelp     bool
 	DisableColor bool
+	CommandArgs  []string
 }
 
 type FlagStringSlice []string

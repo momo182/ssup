@@ -5,6 +5,7 @@ import (
 	"os/exec"
 
 	"github.com/clok/kemba"
+	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/strutil"
 )
 
@@ -19,6 +20,7 @@ type Network struct {
 	User         string `yaml:"user"`
 	Password     string `yaml:"pass" `
 	IdentityFile string `yaml:"id_file"`
+	Name         string
 }
 
 // ParseInventory runs the inventory command, if provided, and appends
@@ -30,13 +32,6 @@ func (n Network) ParseInventory() ([]NetworkHost, error) {
 		l("no inventory given")
 		return nil, nil
 	}
-
-	// cmdParts := strings.Fields()
-	// if len(cmdParts) == 0 {
-	// 	l("no inventory given")
-	// 	return nil, nil
-
-	// }
 
 	cmdParts := []string{"/bin/sh", "-c", n.Inventory}
 	l("%v", cmdParts)
@@ -50,34 +45,11 @@ func (n Network) ParseInventory() ([]NetworkHost, error) {
 	}
 	l("output:\n%s", output)
 
-	// var hosts []string
 	var hostsObjects []NetworkHost
-	// buf := bytes.NewBuffer(output)
 	lines := strutil.ToSlice(string(output), "\n")
 
 	for _, line := range lines {
-		// host, err := buf.ReadString('\n')
-		// if err != nil {
-		// 	if err == io.EOF {
-		// 		break
-		// 	}
-		// 	return nil, err
-		// }
 		h := checkHostsForm(line)
-
-		// 	host = strings.TrimSpace(host)
-		// 	// skip empty lines and comments
-		// 	if host == "" || host[:1] == "#" {
-		// 		continue
-		// 	}
-
-		// 	hosts = append(hosts, host)
-		// }
-		// for _, host := range hosts {
-		// 	h := NetworkHost{
-		// 		Host: host,
-		// 	}
-
 		hostsObjects = append(hostsObjects, h)
 	}
 	return hostsObjects, nil
@@ -109,6 +81,7 @@ func (n *Network) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	n.User = temp.User
 	n.IdentityFile = temp.IdentityFile
 
-	l("Unmarshalled network: %+v", *n)
+	l("Unmarshalled network:")
+	l("%s", dump.Format(n))
 	return nil
 }

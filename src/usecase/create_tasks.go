@@ -82,7 +82,7 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 			Env:     env,
 		}
 
-		appendCommandEnvsToTask(cmd, task)
+		AppendCommandEnvsToTask(cmd, task)
 		decorateTaskDetails(args, task, cmd)
 		tasks = append(tasks, task)
 	}
@@ -97,7 +97,7 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 			Env:  env,
 		}
 
-		appendCommandEnvsToTask(cmd, &task)
+		AppendCommandEnvsToTask(cmd, &task)
 		decorateTaskDetails(args, &task, cmd)
 
 		if cmd.Once {
@@ -115,7 +115,7 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 	return tasks, nil
 }
 
-func appendCommandEnvsToTask(cmd *entity.Command, task *entity.Task) {
+func AppendCommandEnvsToTask(cmd *entity.Command, task *entity.Task) {
 	l := kemba.New("usecase::append_command_envs_to_task").Printf
 
 	l("dump: 61B6EDEA-0EA0-4466-95CB-08AEEB7D0258")
@@ -132,16 +132,21 @@ func appendCommandEnvsToTask(cmd *entity.Command, task *entity.Task) {
 
 	l("check if command had envs")
 
-	if len(cmd.Env.Keys()) > 0 {
-		l("command had some env, applying envs to task")
-		// task.Env = append(task.Env, cmd.Env...)
-		dest := task.Env
-		source := cmd.Env
-		// append every task from source to dest
-		for _, key := range source.Keys() {
-			value := source.Get(key)
-			dest.Set(key, value)
-		}
+	if len(cmd.Env.Keys()) == 0 {
+		l("command had no env, skipping")
+		return
+	}
+
+	l("command had some env, applying envs to task")
+	// task.Env = append(task.Env, cmd.Env...)
+	source := cmd.Env
+	// dest := task.Env
+	// dest := entity.EnvList{}
+	// append every task from source to dest
+	for _, key := range source.Keys() {
+		value := source.Get(key)
+		l("got value: %s", value)
+		task.Env.Set(key, value)
 	}
 
 	l("dump: 65589739-F0F5-4D96-A535-07684F4F5CC0")

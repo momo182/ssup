@@ -52,6 +52,7 @@ func init() {
 func main() {
 	l := kemba.New("main").Printf
 	flag.Parse()
+	initialArgs.CommandArgs = flag.Args()
 
 	if initialArgs.ShowHelp {
 		fmt.Fprintln(os.Stderr, entity.ErrUsage, "\n\nOptions:")
@@ -67,39 +68,71 @@ func main() {
 	conf := usecase.ReadSupfile(initialArgs)
 
 	l("parse network and commands to be run from args")
-	network, commands, err := usecase.ParseInitialArgs(conf, initialArgs)
+	initData := entity.InitState{
+		Conf:        conf,
+		InitialArgs: initialArgs,
+	}
+
+	// MOD here we need to return not just filled single network
+	// as it was before
+	// in case of target with multiple affixes we
+	// have to form playbook
+
+	playbook, err := usecase.ParseInitialArgs(initData)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-
-	if e := usecase.RunShellcheck(conf); e != nil {
-		fmt.Fprintln(os.Stderr, e)
-		os.Exit(1442)
+	switch {
+	case playbook == nil:
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(3)
+	default:
+		l("playbook: negative checks passed")
 	}
 
-	usecase.CheckInitialArgs(network, initialArgs)
-	vars := usecase.MergeVars(conf, network)
+	for _, play := range playbook.GetPlays() {
+		switch {
+		case play.Nets == nil:
+			fmt.Fprintln(os.Stderr, fmt.Errorf("got nil pointer when parsing network"))
+			os.Exit(3)
+		default:
+			l("play: negative checks passed")
+		}
 
-	l("parse CLI --env flag env vars") // define $SUP_ENV and override values defined in Supfile.
-	cliVars := usecase.SetEnvValues(vars, initialArgs)
+		network := play.Nets
+		commands := play.Commands
+		l("starting play run\nhosts: %v\ncommands: %v\n", len(network.Hosts), len(commands))
 
-	usecase.GenerateSUPENVFrom(cliVars, vars)
+		if e := usecase.RunShellcheck(conf); e != nil {
+			fmt.Fprintln(os.Stderr, e)
+			os.Exit(1442)
+		}
 
-	l("create new Stackup app")
-	app, err := usecase.NewStackup(conf)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(11)
-	}
-	app.Debug(initialArgs.Debug)
-	app.Prefix(!initialArgs.DisablePrefix)
-	app.Args = initialArgs
+		usecase.CheckInitialArgs(network, initialArgs)
+		vars := usecase.MergeVars(conf, network)
 
-	l("run all the commands in the given network")
-	err = app.Run(network, vars, commands...)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(12)
+		l("parse CLI --env flag env vars") // define $SUP_ENV and override values defined in Supfile.
+		cliVars := usecase.SetEnvValues(vars, initialArgs)
+
+		usecase.GenerateSUPENVFrom(cliVars, vars)
+
+		l("create new Stackup app")
+		app, err := usecase.NewStackup(conf)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(11)
+		}
+		app.Debug(initialArgs.Debug)
+		app.Prefix(!initialArgs.DisablePrefix)
+		app.Args = initialArgs
+
+		l("run all the commands in the given network")
+
+		err = app.Run(network, vars, commands...)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(12)
+		}
 	}
 }

@@ -34,8 +34,8 @@ Extensions to original sup
 - env vars can use subshell syntax to grab a value
 - password fields can use subshell syntax to grab a value and use plain text value
 - added automatic shellcheck support if you have it in PATH
-- added #source:// directive for `run:` and `local:`
-- ssup now changes dir to Supfile location to accomodate use of relative links with #source://
+- added `#source://` directive for `run:` and `local:`
+- ssup now changes dir to Supfile location to accomodate use of relative links with `#source://`
 - all data transfers are now on rclone binary
 - skip all networks definitions to use implicit localhost mode (makefile mode)
 - namespaces to collect vars from one stage and pass those to next stages
@@ -63,6 +63,7 @@ Extensions to original sup
 | `--only REGEXP`    | Filter hosts matching regexp     |
 | `--except REGEXP`  | Filter out hosts matching regexp |
 | `--debug`, `-D`    | Enable debug/verbose mode        |
+| `--no-color`, `-c` | Disable colors                   |
 | `--disable-prefix` | Disable hostname prefix          |
 | `--help`, `-h`     | Show help/usage                  |
 | `--version`, `-v`  | Print version                    |
@@ -85,8 +86,8 @@ networks:
         inventory: curl http://example.com/latest/meta-data/hostname
 ```
 
-`$ sup production COMMAND` will run COMMAND on `api1`, `api2` and `api3` hosts in parallel.
-^^^ plain old way from original sup, at it's minimal form.
+`$ sup production COMMAND` will run COMMAND on `api1`, `api2` and `api3` hosts in parallel.  
+__^^^ plain old way from original sup, at it's minimal form.__
 
 ### Network mods
 
@@ -100,7 +101,7 @@ First, short form:
 networks:
   remote:
     hosts:
-      - remote_user@remote | P@ssw0rd << tube_foo22
+      - remote_user@remote | P@ssw0rd << namespace_foo22
       # ^       ^          ^ ^        ^  ^
       # |       |          | |        |  |
       # user    |          | |        |  |

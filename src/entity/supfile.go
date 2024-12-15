@@ -14,6 +14,20 @@ type Supfile struct {
 	Desc     string   `yaml:"desc"`
 }
 
+func (s Supfile) GetNetworkByName(name string) (*Network, error) {
+	for _, network := range s.Networks.Names {
+		if network == name {
+			result, ok := s.Networks.Get(network)
+			if !ok {
+				return nil, fmt.Errorf("network %q not found", name)
+			}
+			return &result, nil
+		}
+	}
+	return nil, fmt.Errorf("network %q not found", name)
+
+}
+
 type ErrMustUpdate struct {
 	Msg string
 }
