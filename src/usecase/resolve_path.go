@@ -8,9 +8,10 @@ import (
 	"github.com/gookit/goutil/cliutil"
 )
 
+// ResolvePath resolves a path relative to the current working directory
 func ResolvePath(path string) string {
-	l := kemba.New("usecase > ResolvePath").Printf
-	l("ressolve path: %s", path)
+	l := kemba.New("usecase::ResolvePath").Printf
+	l("resolving given path: %s", path)
 	if path == "" {
 		return ""
 	}
