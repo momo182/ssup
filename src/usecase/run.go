@@ -10,6 +10,7 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/dsnet/try"
+	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/goware/prefixer"
 	"github.com/momo182/ssup/src/entity"
@@ -27,6 +28,7 @@ type Stackup struct {
 	Args   *entity.InitialArgs
 }
 
+// NewStackup creates a new Stackup instance.
 func NewStackup(conf *entity.Supfile) (*Stackup, error) {
 	return &Stackup{
 		conf: conf,
@@ -34,8 +36,8 @@ func NewStackup(conf *entity.Supfile) (*Stackup, error) {
 }
 
 // Run runs set of commands on multiple hosts defined by network sequentially.
-// TODO: This megamoth method needs a big refactor and should be split
 //
+//	TODO: This megamoth method needs a big refactor and should be split
 //	to multiple smaller methods.
 func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, commands ...*entity.Command) error {
 	l := kemba.New("usecase::Stackup.Run").Printf
@@ -45,7 +47,7 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 	defer func() {
 		l("set deferred cleanup")
 		rcloneTmpCfg.Close()
-		fsutil.Remove(rcloneTmpCfg.Name())
+		try.E(fsutil.Remove(rcloneTmpCfg.Name()))
 	}()
 
 	if len(commands) == 0 {
@@ -66,13 +68,13 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 			Wrap(e)
 	}
 
-	var wg sync.WaitGroup
+	var connectWg sync.WaitGroup
 	clientCh := make(chan entity.ClientFacade, len(network.Hosts))
 	errCh := make(chan error, len(network.Hosts))
 
 	l("about to connect to hosts:\n%v", network.Hosts)
-	connectToHosts(network, &wg, env, errCh, clientCh, bastion)
-	wg.Wait()
+	connectToHosts(network, &connectWg, errCh, clientCh, bastion)
+	connectWg.Wait()
 	close(clientCh)
 	close(errCh)
 
@@ -119,6 +121,7 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 				var prefix string
 				var prefixLen int
 				c.SetRcloneCfg(rcloneTmpCfg.Name())
+
 				if sup.prefix {
 					prefix, prefixLen = c.Prefix()
 					if len(prefix) < maxLen { // Left padding.
@@ -127,11 +130,11 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 				}
 
 				if len(cmd.Upload) > 0 {
-					for _, upload_command := range cmd.Upload {
-						if err := c.Upload(upload_command.Src, upload_command.Dst, rcloneTmpCfg.Name()); err != nil {
+					for _, uploadCommand := range cmd.Upload {
+						if err := c.Upload(uploadCommand.Src, uploadCommand.Dst, rcloneTmpCfg.Name()); err != nil {
 							return oops.Trace("28D38F66-3258-4578-A275-7D70F3765C0A").
 								Hint("running upload command").
-								With("upload_command", upload_command).
+								With("upload_command", uploadCommand).
 								Wrap(e)
 						}
 					}
@@ -192,6 +195,9 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 						if !ok {
 							return
 						}
+
+						l("sending signal %s to %s\n", sig.String(), dump.Format(task))
+
 						for _, c := range task.Clients {
 							err := c.Signal(sig)
 							if err != nil {
@@ -244,7 +250,7 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 	return nil
 }
 
-func connectToHosts(network *entity.Network, wg *sync.WaitGroup, env entity.EnvList, errCh chan error, clientCh chan entity.ClientFacade, bastion *clientSSH.SSHClient) {
+func connectToHosts(network *entity.Network, wg *sync.WaitGroup, errCh chan error, clientCh chan entity.ClientFacade, bastion *clientSSH.SSHClient) {
 	l := kemba.New("usecase::run::connectToHosts").Printf
 	l("will range over hosts: %v", len(network.Hosts))
 	for i, host := range network.Hosts {
@@ -338,10 +344,12 @@ func (*Stackup) connectToBastionHost(network *entity.Network) (*clientSSH.SSHCli
 	return bastion, nil
 }
 
+// Debug sets whether or not to print debug messages
 func (sup *Stackup) Debug(value bool) {
 	sup.debug = value
 }
 
+// Prefix sets the host prefix for printing output from it
 func (sup *Stackup) Prefix(value bool) {
 	sup.prefix = value
 }

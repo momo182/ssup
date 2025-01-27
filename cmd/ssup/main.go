@@ -7,6 +7,7 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/gookit/goutil/dump"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/gateway/namespace"
 	"github.com/momo182/ssup/src/gateway/shellcheck"
@@ -88,7 +89,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(3)
 	default:
-		l("playbook: negative checks passed")
+		l("playbook is nil: negative checks passed")
+		l("%v", dump.Format(playbook))
 	}
 
 	for _, play := range playbook.GetPlays() {
@@ -97,7 +99,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, fmt.Errorf("got nil pointer when parsing network"))
 			os.Exit(3)
 		default:
-			l("play: negative checks passed")
+			l("play is nil: negative checks passed")
 		}
 
 		network := play.Nets
@@ -113,9 +115,8 @@ func main() {
 		vars := usecase.MergeVars(conf, network)
 
 		l("parse CLI --env flag env vars") // define $SUP_ENV and override values defined in Supfile.
-		cliVars := usecase.SetEnvValues(vars, initialArgs)
-
-		usecase.GenerateSUPENVFrom(cliVars, vars)
+		usecase.SetEnvValues(&vars, initialArgs)
+		usecase.GenerateSUPENVFrom(&vars)
 
 		l("create new Stackup app")
 		app, err := usecase.NewStackup(conf)
@@ -123,6 +124,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(11)
 		}
+
 		app.Debug(initialArgs.Debug)
 		app.Prefix(!initialArgs.DisablePrefix)
 		app.Args = initialArgs

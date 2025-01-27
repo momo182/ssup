@@ -183,7 +183,7 @@ func (c *SSHClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) err
 	var authMethods []ssh.AuthMethod
 	initAuthMethodOnce.Do(initAuthMethod)
 	l("checking password auth")
-	authMethods = spass.CheckPasswordAuth(authMethods, host)
+	authMethods = spass.SetupAuthMethods(authMethods, host)
 
 	err := c.parseHost(host.Host)
 	if err != nil {

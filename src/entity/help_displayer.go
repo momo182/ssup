@@ -108,7 +108,20 @@ func colorCmdUsage(conf *Supfile) {
 	targets := pterm.TableData{{"Target", "Commands"}}
 	for _, name := range conf.Targets.Names {
 		cmds, _ := conf.Targets.Get(name)
-		targets = append(targets, []string{name, strings.Join(cmds, " ")})
+		line := []string{name}
+		tail := []string{}
+		for _, cmd := range cmds {
+			affixedNet, ok := conf.Targets.GetAffixByCommandName(cmd)
+			if !ok {
+				// TODO fix here error
+				// line = append(line, cmd+", ")
+				continue
+			}
+			tail = append(tail, cmd+"@"+affixedNet.AffixedNetwork)
+		}
+		finalLine := strings.Join(tail, ",\n")
+		line = append(line, finalLine)
+		targets = append(targets, line)
 	}
 	pterm.DefaultTable.WithHasHeader(true).WithRowSeparator("-").WithHeaderRowSeparator("-").WithData(targets).Render()
 }
@@ -149,24 +162,37 @@ func cmdUsage(conf *Supfile) {
 	w.Init(os.Stderr, 4, 4, 2, ' ', 0)
 	defer w.Flush()
 
-	// Print available targets/commands.
-	fmt.Fprintln(w, "Targets:\t")
-	for _, name := range conf.Targets.Names {
-		cmds, _ := conf.Targets.Get(name)
-		fmt.Fprintf(w, "- %v\t%v\n", name, strings.Join(cmds, " "))
-	}
-
 	if conf.Desc != "" {
 		fmt.Fprintln(w, "Description:\t")
 		fmt.Fprintf(w, "%v", conf.Desc)
 	}
 
-	fmt.Fprintln(w, "\t")
 	fmt.Fprintln(w, "Commands:\t")
 	for _, name := range conf.Commands.Names {
 		cmd, _ := conf.Commands.Get(name)
 		fmt.Fprintf(w, "- %v\t%v\n", name, cmd.Desc)
 	}
+	fmt.Fprintln(w, "\t")
+
+	// Print available targets/commands.
+	fmt.Fprintln(w, "Targets:\t")
+	for _, name := range conf.Targets.Names {
+		cmds, _ := conf.Targets.Get(name)
+		line := []string{fmt.Sprintf("- %v\t", name)}
+		tail := []string{}
+		for _, cmd := range cmds {
+			affixedNet, ok := conf.Targets.GetAffixByCommandName(cmd)
+			if !ok {
+				// TODO fix here error
+				line = append(line, cmd+", ")
+				continue
+			}
+			tail = append(tail, cmd+"@"+affixedNet.AffixedNetwork)
+		}
+		line = append(line, strings.Join(tail, " -> "))
+		fmt.Fprintf(w, strings.Join(line, ""))
+	}
+	fmt.Fprintln(w)
 	fmt.Fprintln(w)
 }
 
