@@ -10,6 +10,7 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/dsnet/try"
+	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/goware/prefixer"
 	"github.com/momo182/ssup/src/entity"
@@ -120,6 +121,7 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 				var prefix string
 				var prefixLen int
 				c.SetRcloneCfg(rcloneTmpCfg.Name())
+
 				if sup.prefix {
 					prefix, prefixLen = c.Prefix()
 					if len(prefix) < maxLen { // Left padding.
@@ -193,6 +195,9 @@ func (sup *Stackup) Run(network *entity.Network, envVars entity.EnvList, command
 						if !ok {
 							return
 						}
+
+						l("sending signal %s to %s\n", sig.String(), dump.Format(task))
+
 						for _, c := range task.Clients {
 							err := c.Signal(sig)
 							if err != nil {
