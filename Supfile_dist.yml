@@ -1,0 +1,79 @@
+---
+version: 0.5
+env:
+  OUTPUT_DIR: build
+commands:
+  build-release:
+    desc: |
+      cross compiles for macos and linux
+      - x86_64-linux-gnu
+      - aarch64-linux-gnu
+      - x86_64-macos-gnu
+      - aarch64-macos-gnu
+      - x86_64-windows-gnu
+      - aarch64-windows-gnu
+    local: |
+      rm -rvf "$OUTPUT_DIR"
+      mkdir -p "$OUTPUT_DIR"
+
+      echo "Building for arm64 macos"
+      export ARCH="aarch64-macos-gnu"
+      export CC="zig cc -target ${ARCH}"
+      export CXX="zig c++ -target ${ARCH}"
+      export GOOS=darwin 
+      export GOARCH=arm64
+      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
+      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+
+      echo "Building for amd64 macos"
+      export ARCH="x86_64-macos-gnu"
+      export CC="zig cc -target ${ARCH}"
+      export CXX="zig c++ -target ${ARCH}"
+      export GOOS=darwin 
+      export GOARCH=amd64
+      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
+      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+
+      echo "Building for arm64 linux"
+      export ARCH="aarch64-linux-gnu"
+      export CC="zig cc -target ${ARCH}"
+      export CXX="zig c++ -target ${ARCH}"
+      export GOOS=linux 
+      export GOARCH=arm64
+      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup 
+      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+
+      echo "Building for amd64 linux"
+      export ARCH="x86_64-linux-gnu"
+      export CC="zig cc -target ${ARCH}"
+      export CXX="zig c++ -target ${ARCH}"
+      export GOOS=linux 
+      export GOARCH=amd64
+      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
+      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+
+      echo "Building for arm64 windows"
+      export ARCH="aarch64-linux-gnu"
+      export CC="zig cc -target ${ARCH}"
+      export CXX="zig c++ -target ${ARCH}"
+      export GOOS=windows 
+      export GOARCH=arm64
+      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup 
+      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+
+      echo "Building for amd64 windows"
+      export ARCH="x86_64-linux-gnu"
+      export CC="zig cc -target ${ARCH}"
+      export CXX="zig c++ -target ${ARCH}"
+      export GOOS=windows 
+      export GOARCH=amd64
+      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
+      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+
+      tree ./build
