@@ -39,7 +39,7 @@ func (c *SSHClient) Upload(localPath, remotePath string) error {
 	defer client.Close()
 
 	// Recursively upload the directory.
-	return uploadDir(client, localPath, remotePath)
+	return doUpload(client, localPath, remotePath, false)
 }
 
 // GenerateOnRemote basically cats file content to "~/" + entity.TASK_TAIL on remote
@@ -89,7 +89,7 @@ func (c *SSHClient) GenerateOnRemote(data []byte, remotePath string) error {
 	defer client.Close()
 
 	// Recursively upload the directory.
-	return uploadDir(client, localPath.Name(), remotePath)
+	return doUpload(client, localPath.Name(), remotePath, true)
 }
 
 // connectSFTP creates an SSH connection and returns an SFTP client.
@@ -104,8 +104,8 @@ func connectSFTP(sshClient *ssh.Client) (*sftp.Client, error) {
 	return sftpClient, nil
 }
 
-// uploadDir recursively uploads a local directory to the remote SFTP server.
-func uploadDir(client *sftp.Client, localPath, remotePath string) error {
+// doUpload recursively uploads a local directory to the remote SFTP server.
+func doUpload(client *sftp.Client, localPath, remotePath string, silent bool) error {
 	l := kemba.New("gw::sshclient::uploadDir").Printf
 	return filepath.Walk(localPath, func(localFilePath string, info os.FileInfo, err error) error {
 		// spinner init
@@ -118,8 +118,12 @@ func uploadDir(client *sftp.Client, localPath, remotePath string) error {
 		}
 		// Use path.Join to construct the remote path (ensuring forward slashes).
 		remoteFilePath := path.Join(remotePath, filepath.ToSlash(relPath))
+		var spinner1 *pterm.SpinnerPrinter
 
-		spinner1, err := pterm.DefaultSpinner.WithWriter(multi.NewWriter()).Start("uploading: " + remoteFilePath)
+		if !silent {
+			spinner1, err = pterm.DefaultSpinner.WithWriter(multi.NewWriter()).Start("uploading: " + remoteFilePath)
+		}
+
 		if err != nil {
 			return err
 		}
@@ -136,15 +140,20 @@ func uploadDir(client *sftp.Client, localPath, remotePath string) error {
 				return fmt.Errorf("failed to create remote directory %s: %v", remoteFilePath, err)
 			}
 
-			spinner1.Success(fmt.Sprintf("%s", remoteFilePath))
+			if !silent {
+				spinner1.Success(fmt.Sprintf("%s", remoteFilePath))
+			}
 
 		} else {
 			l("inspecting if localPath is not a directory")
 			// if basename == ".DS_Store" skip
 			basename := filepath.Base(localFilePath)
-			if basename == ".DS_Store" {
-				spinner1.Info(fmt.Sprintf("skipped: %s", remoteFilePath))
-				return nil
+
+			if !silent {
+				if basename == ".DS_Store" {
+					spinner1.Info(fmt.Sprintf("skipped: %s", remoteFilePath))
+					return nil
+				}
 			}
 
 			// Check if the remote directory exists
@@ -173,7 +182,9 @@ func uploadDir(client *sftp.Client, localPath, remotePath string) error {
 			if _, err := io.Copy(remoteFile, localFile); err != nil {
 				return fmt.Errorf("failed to copy to remote file %s: %v", remoteFilePath, err)
 			}
-			spinner1.Success(fmt.Sprintf("%s", remoteFilePath))
+			if !silent {
+				spinner1.Success(fmt.Sprintf("%s", remoteFilePath))
+			}
 		}
 		return nil
 	})
