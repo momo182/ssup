@@ -1,0 +1,41 @@
+---
+version: 0.5
+desc: |
+  Supfile used for internal testing
+  Normal mode
+
+networks:
+  remote1:
+    hosts:
+    - foo@1.2.3.4
+    - bar@4.3.2.1
+  remote2:
+    hosts:
+    - 1.1.1.1
+    - 2.2.2.2
+
+env:
+  FOO: bar
+
+commands:
+  cmd1:
+    desc: cmd 1 description
+    local: |
+      exit 0
+
+  cmd2:
+    desc: cmd 2 description
+    local: |
+      exit 0
+
+  cmd3:
+    desc: cmd 3 description
+    local: |
+      exit 0
+
+targets:
+  target1:
+  - cmd1
+  - cmd2
+  target2:
+  - cmd3
