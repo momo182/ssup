@@ -26,10 +26,12 @@ type ServiceLobby struct {
 // ServiceRegistry holds common serices used by many places in code
 var ServiceRegistry *ServiceLobby
 
+var RegisterCmdDisabled = ""
+
 // RegisterCmd is the shell function literal to register a key and value in a file
 // later to be parsed by ssup for any envs passed inside
 // moved here to reduce code duplication
-var RegisterCmd = `register() {
+var RegisterCmdBash = `register() {
 echo "will register key '$1' with value '$2'"
 local dest="$HOME/.local/ssup/run/_tube_data"
 	
@@ -59,10 +61,10 @@ fi
 }
 `
 
-func insertSSUPCommands(input, homeDir string) string {
+func insertSSUPCommands(command, homeDir string) string {
 	l := kemba.New("lobby::insertSSUPCommands").Printf
 	// split input into lines
-	lines := strings.Split(input, "\n")
+	lines := strings.Split(command, "\n")
 
 	// create a buffer to store the modified lines
 	var buffer bytes.Buffer
@@ -111,6 +113,27 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 	l("checking for SUP_SUDO")
 	var err error
 	var connectionUser string
+	RegisterCmd := RegisterCmdBash
+
+	// split command to lines
+	lines := strings.Split(command, "\n")
+	head := lines[0]
+	l("head: %s", head)
+
+	endsOnNu := func(head string) bool {
+		return strings.HasSuffix(strings.TrimSpace(head), "/nu")
+	}
+
+	searchesNuViaEnv := func(head string) bool {
+		return strings.HasSuffix(strings.TrimSpace(head), "/env nu")
+	}
+
+	// check if head is ending with '/nu'
+	// if it is, then replace RegisterCmd with empty string
+	if endsOnNu(head) || searchesNuViaEnv(head) {
+		l("dropping register command for nu scripts")
+		RegisterCmd = RegisterCmdDisabled
+	}
 
 	inv := c.GetInventory()
 	if inv == nil {
@@ -148,16 +171,18 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 	commandsToRun := insertSSUPCommands(task.Run, connUserHomeDir)
 	l("commandsToRun:\n%s", commandsToRun)
 
-	generateMinimumScripts := func() {
-		l("generating _ssup_run: '%s'", command)
+	generateBaselineStartSet := func() {
+		l("generating _ssup_run: '%s'", commandsToRun)
 		if err := c.GenerateOnRemote([]byte(commandsToRun), mainScriptFile); err != nil {
 			log.Panic("failed to generate _ssup_run", err)
 		}
 
+		l("generating _ssup_env: '%s'", Env.AsExport())
 		if err := c.GenerateOnRemote([]byte(Env.AsExport()), envFile); err != nil {
 			log.Panic("failed to generate _ssup_env", err)
 		}
 
+		l("generating _ssup_commands: '%s'", RegisterCmd)
 		if err := c.GenerateOnRemote([]byte(RegisterCmd), injectedCommands); err != nil {
 			log.Panic("failed to generate _ssup_commands", err)
 		}
@@ -193,7 +218,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 		// ENCRYPTION_PASSPHRASE="mystrongpassword" openssl enc -d -aes-256-cbc -pbkdf2 -in ./out.txt   -pass env:ENCRYPTION_PASSPHRASE
 		command = sf.FormatComplex("cat {hashed_pass_file} | sudo -S {shell} -c \"rm {hashed_pass_file} && source {env_file} && chmod +x {main_script} && {main_script}; rm -rf {home_folder}/{removal_mask}\"", data)
 		l("generating remote encrypted password file, w pass: %s", sudoPassword)
-		generateMinimumScripts()
+		generateBaselineStartSet()
 		err = c.GenerateOnRemote([]byte(sudoPassword), hashedPassFile)
 		if err != nil {
 			l("failed to generate remote encrypted password file: %s", err)
@@ -203,7 +228,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 	default:
 		l("wrapping command into normal block:")
 		command = sf.FormatComplex("{shell} -c 'source {env_file} && chmod +x {main_script} && {main_script}; rm -rf {home_folder}/{removal_mask}'", data)
-		generateMinimumScripts()
+		generateBaselineStartSet()
 	}
 
 	l("done formatting command: %s", command)
