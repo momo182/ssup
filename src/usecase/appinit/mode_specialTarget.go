@@ -7,12 +7,11 @@ import (
 	"github.com/clok/kemba"
 	"github.com/gookit/goutil/dump"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/lobby"
 )
 
-// SpecialTargetMode is a mode where all args are Target names
+// specialTargetMode is a mode where all args are Target names
 // and networks are actually defined inside Supfile
-func SpecialTargetMode(initData entity.InitState, helpMenu entity.HelpDisplayer) (*entity.PlayBook, error) {
+func specialTargetMode(initData entity.InitState, helpMenu entity.HelpDisplayer) (*entity.PlayBook, error) {
 	l := kemba.
 		New("usecase::ParseInitialArgs::specialTargetMode").Printf
 
@@ -37,7 +36,7 @@ func SpecialTargetMode(initData entity.InitState, helpMenu entity.HelpDisplayer)
 			}
 			netName := affix.AffixedNetwork
 			l("affixedName: %v", affix)
-			lobby.EnsureNetworkExists(netName, conf, helpMenu)
+			ensureNetworkExists(netName, conf, helpMenu)
 			affixedNet, err := conf.GetNetworkByName(netName)
 			if err != nil {
 				return nil, err
@@ -45,9 +44,9 @@ func SpecialTargetMode(initData entity.InitState, helpMenu entity.HelpDisplayer)
 
 			// this should be common
 			l("parse CLI --env flag env vars, override values defined in Network env")
-			lobby.OverrideEnvFromArgs(initData.InitialArgs.EnvVars, affixedNet)
+			overrideEnvFromArgs(initData.InitialArgs.EnvVars, affixedNet)
 			// this should be common
-			lobby.AddSSUPDefaultEnvs(affixedNet, args)
+			addSSUPDefaultEnvs(affixedNet, args)
 
 			command, ok := conf.Commands.Get(commandName)
 			if !ok {

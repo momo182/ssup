@@ -7,10 +7,9 @@ import (
 	"github.com/clok/kemba"
 	"github.com/gookit/goutil/dump"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/lobby"
 )
 
-func NormalMode(initData entity.InitState, helpMenu entity.HelpDisplayer) (*entity.PlayBook, error) {
+func normalMode(initData entity.InitState, helpMenu entity.HelpDisplayer) (*entity.PlayBook, error) {
 	l := kemba.New("usecase::ParseInitialArgs::normalMode").Printf
 
 	// defines
@@ -23,15 +22,14 @@ func NormalMode(initData entity.InitState, helpMenu entity.HelpDisplayer) (*enti
 	args = args[1:]
 
 	// this will exit on err
-	lobby.EnsureNetworkExists(networkName, conf, helpMenu)
+	ensureNetworkExists(networkName, conf, helpMenu)
 	network, err := conf.GetNetworkByName(networkName)
 	if err != nil {
 		return nil, err
 	}
 
-	// this should be common
 	l("parse CLI --env flag env vars, override values defined in Network env")
-	lobby.OverrideEnvFromArgs(envFromArgs, network)
+	overrideEnvFromArgs(envFromArgs, network)
 
 	l("check if we have an inventory via script execution")
 	hosts, err := network.ParseInventory()
@@ -40,8 +38,7 @@ func NormalMode(initData entity.InitState, helpMenu entity.HelpDisplayer) (*enti
 	}
 	network.Hosts = append(network.Hosts, hosts...)
 
-	// this should be common
-	lobby.AddSSUPDefaultEnvs(network, initData.InitialArgs.CommandArgs)
+	addSSUPDefaultEnvs(network, initData.InitialArgs.CommandArgs)
 
 	// actually add the network to the play
 	play.Network = network

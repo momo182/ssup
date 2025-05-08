@@ -5,11 +5,10 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/lobby"
 	uc "github.com/momo182/ssup/src/usecase"
 )
 
-func MakeFileMode(initData entity.InitState, helpMenu entity.HelpDisplayer) (*entity.PlayBook, error) {
+func makeFileMode(initData entity.InitState, helpMenu entity.HelpDisplayer) (*entity.PlayBook, error) {
 	l := kemba.New("usecase::makeFileMode").Printf
 	l("makefile mode selected")
 	args := initData.InitialArgs.CommandArgs
@@ -27,9 +26,9 @@ func MakeFileMode(initData entity.InitState, helpMenu entity.HelpDisplayer) (*en
 
 	// this should be common
 	l("parse CLI --env flag env vars, override values defined in Network env")
-	lobby.OverrideEnvFromArgs(initData.InitialArgs.EnvVars, network)
+	overrideEnvFromArgs(initData.InitialArgs.EnvVars, network)
 	// this should be common
-	lobby.AddSSUPDefaultEnvs(network, args)
+	addSSUPDefaultEnvs(network, args)
 
 	for _, arg := range args {
 		isCommand := conf.Commands.Has(arg)

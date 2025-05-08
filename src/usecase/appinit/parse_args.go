@@ -6,7 +6,6 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/lobby"
 
 	// "github.com/momo182/ssup/src/usecase/modes"
 	"github.com/no-src/nsgo/osutil"
@@ -43,7 +42,7 @@ func ParseInitialArgs(initData entity.InitState) (*entity.PlayBook, error) {
 		onlyTargets := allArgsAreTargets(initData, helpMenu)
 		if onlyTargets {
 			l("special target mode")
-			makefileFlowPlayBook, err := SpecialTargetMode(initData, helpMenu)
+			makefileFlowPlayBook, err := specialTargetMode(initData, helpMenu)
 			if err != nil {
 				return nil, err
 			}
@@ -51,14 +50,14 @@ func ParseInitialArgs(initData entity.InitState) (*entity.PlayBook, error) {
 		}
 
 		l("normal mode")
-		normalFlowPlayBook, err := NormalMode(initData, helpMenu)
+		normalFlowPlayBook, err := normalMode(initData, helpMenu)
 		if err != nil {
 			return nil, err
 		}
 		return normalFlowPlayBook, nil
 	default:
 		l("makefile mode")
-		makefileFlow, err := MakeFileMode(initData, helpMenu)
+		makefileFlow, err := makeFileMode(initData, helpMenu)
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +96,7 @@ func preparePlaybookForTarget(cmd string, conf *entity.Supfile, helpMenu entity.
 
 		l("%v", affix)
 		networkToCheck := affix.AffixedNetwork
-		lobby.EnsureNetworkExists(networkToCheck, conf, helpMenu)
+		ensureNetworkExists(networkToCheck, conf, helpMenu)
 		affixedNet, err := conf.GetNetworkByName(networkToCheck)
 		if err != nil {
 			return nil, err
@@ -169,6 +168,7 @@ func allArgsAreTargets(initData entity.InitState, helpMenu entity.HelpDisplayer)
 	return false
 }
 
+// TargetsHaveAffixes if targets have affixes mapped
 func TargetsHaveAffixes(conf *entity.Supfile) bool {
 	for _, selectedTarget := range conf.Targets.Names {
 		if _, ok := conf.Targets.GetAffixByCommandName(selectedTarget); ok {

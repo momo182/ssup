@@ -3,12 +3,14 @@ package usecase
 import (
 	"fmt"
 	"os"
+	"os/user"
+	"path/filepath"
 	"regexp"
 
 	"github.com/clok/kemba"
+	"github.com/gookit/goutil/cliutil"
 	"github.com/mikkeloscar/sshconfig"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/lobby"
 	// appinit "github.com/momo182/ssup/src/usecase/appinit"
 )
 
@@ -36,7 +38,7 @@ func checkSSHConfig(network *entity.Network, initialArgs *entity.InitialArgs) {
 	l := kemba.New("usecase > checkSSHConfig").Printf
 
 	l("sshconfig: %s", initialArgs.SshConfig)
-	confHosts, err := sshconfig.ParseSSHConfig(lobby.ResolvePath(initialArgs.SshConfig))
+	confHosts, err := sshconfig.ParseSSHConfig(ResolvePath(initialArgs.SshConfig))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(41)
@@ -55,7 +57,7 @@ func checkSSHConfig(network *entity.Network, initialArgs *entity.InitialArgs) {
 		conf, found := confMap[host.Host]
 		if found {
 			network.User = conf.User
-			network.IdentityFile = lobby.ResolvePath(conf.IdentityFile)
+			network.IdentityFile = ResolvePath(conf.IdentityFile)
 			hostPort := []string{fmt.Sprintf("%s:%d", conf.HostName, conf.Port)}
 			host := entity.NetworkHost{
 				Host: hostPort[0],
@@ -111,4 +113,26 @@ func checkOnlyHosts(network *entity.Network, initialArgs *entity.InitialArgs) {
 		os.Exit(45)
 	}
 	network.Hosts = hosts
+}
+
+// ResolvePath resolves a path relative to the current working directory
+func ResolvePath(path string) string {
+	l := kemba.New("usecase::ResolvePath").Printf
+	l("resolving given path: %s", path)
+	if path == "" {
+		return ""
+	}
+
+	if path == "." {
+		return cliutil.Workdir()
+	}
+
+	if path[:2] == "~/" {
+		usr, err := user.Current()
+		if err == nil {
+			path = filepath.Join(usr.HomeDir, path[2:])
+		}
+	}
+	l("final path: %s", path)
+	return path
 }
