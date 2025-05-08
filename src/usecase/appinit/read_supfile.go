@@ -10,7 +10,7 @@ import (
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/strutil"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/lobby"
+	uc "github.com/momo182/ssup/src/usecase"
 	"gopkg.in/yaml.v2"
 )
 
@@ -24,7 +24,7 @@ func ReadSupfile(initialArgs *entity.InitialArgs) *entity.Supfile {
 		initialArgs.Supfile = "./Supfile"
 	}
 
-	data, err := os.ReadFile(lobby.ResolvePath(initialArgs.Supfile))
+	data, err := os.ReadFile(uc.ResolvePath(initialArgs.Supfile))
 	if err != nil {
 		firstErr := err
 		l("failed to read ./Supfile, will try ./Supfile.yml")

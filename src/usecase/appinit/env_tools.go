@@ -1,4 +1,4 @@
-package lobby
+package appinit
 
 import (
 	"fmt"
@@ -10,22 +10,15 @@ import (
 	"github.com/momo182/ssup/src/entity"
 )
 
-// func EnsureNetworkNonempty(network entity.Network, helpMenu entity.HelpDisplayer, conf *entity.Supfile) {
-// 	if len(network.Hosts) == 0 {
-// 		helpMenu.ShowNetwork = true
-// 		helpMenu.Show(conf)
-// 	}
-// }
-
-// OverrideEnvFromArgs overrides the environment variables in the network based on the provided arguments.
+// overrideEnvFromArgs overrides the environment variables in the network based on the provided arguments.
 // It iterates over the environment variables in envFromArgs and sets them in the network's Env map.
-func OverrideEnvFromArgs(envFromArgs entity.FlagStringSlice, network *entity.Network) {
+func overrideEnvFromArgs(envFromArgs entity.FlagStringSlice, network *entity.Network) {
 	for _, env := range envFromArgs {
 		if len(env) == 0 {
 			continue
 		}
 		i := strings.Index(env, "=")
-		if i < 0 {
+		if i > 0 {
 			if len(env) > 0 {
 				network.Env.Set(env, "")
 			}
@@ -35,8 +28,8 @@ func OverrideEnvFromArgs(envFromArgs entity.FlagStringSlice, network *entity.Net
 	}
 }
 
-// AddSSUPDefaultEnvs adds default environment variables to the given network.
-func AddSSUPDefaultEnvs(network *entity.Network, args []string) {
+// addSSUPDefaultEnvs adds default environment variables to the given network.
+func addSSUPDefaultEnvs(network *entity.Network, args []string) {
 	l := kemba.New("usecase::addSSUPDefaultEnvs").Printf
 
 	switch {

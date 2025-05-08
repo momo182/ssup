@@ -1,4 +1,4 @@
-package lobby
+package appinit
 
 import (
 	"fmt"
@@ -7,9 +7,9 @@ import (
 	"github.com/momo182/ssup/src/entity"
 )
 
-// EnsureNetworkExists checks if a network exists
+// ensureNetworkExists checks if a network exists
 // If it doesn't exist it prints a help message and exits the program
-func EnsureNetworkExists(netName string, conf *entity.Supfile, helpMenu entity.HelpDisplayer) {
+func ensureNetworkExists(netName string, conf *entity.Supfile, helpMenu entity.HelpDisplayer) {
 	_, ok := conf.Networks.Get(netName)
 	if !ok {
 		helpMenu.ShowNetwork = true
