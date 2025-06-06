@@ -7,6 +7,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/clok/kemba"
+	"github.com/gookit/goutil/dump"
 	"github.com/pterm/pterm"
 	"github.com/pterm/pterm/putils"
 )
@@ -28,8 +30,13 @@ func (h *HelpDisplayer) Show(conf *Supfile) {
 }
 
 func (h *HelpDisplayer) ShowAll(conf *Supfile) {
+	l := kemba.New("entity::HelpDisplayer").Printf
+	l("will display help now")
 	h.ShowNetwork = true
 	h.ShowCmd = true
+	l("5F4358A6-3D8E-4819-A228-DFEF098A22A9: // state of help displayer")
+	l("show net: %v\nshow cmd: %v\nis colored: %v", h.ShowNetwork, h.ShowCmd, h.Color)
+
 	if h.Color {
 		h.printColoredHelp(conf)
 		return
@@ -38,15 +45,21 @@ func (h *HelpDisplayer) ShowAll(conf *Supfile) {
 }
 
 func (h *HelpDisplayer) printColoredHelp(conf *Supfile) {
+	l := kemba.New("entity::printColoredHelp").Printf
+	l("printing intro screen now")
 	introScreen()
+	l("printing mods status")
 	printOutModsStatus()
 	fmt.Println()
+	l("printing makefile operations status")
 	if h.ShowMakeMode {
 		colorMakefileUsage()
 	}
+	l("printing network usage")
 	if h.ShowNetwork {
 		colorNetworkUsage(conf)
 	}
+	l("printing command usage")
 	if h.ShowCmd {
 		colorCmdUsage(conf)
 	}
@@ -91,12 +104,14 @@ func colorMakefileUsage() {
 }
 
 func colorCmdUsage(conf *Supfile) {
+	l := kemba.New("entity::colorCmdUsage").Printf
 	if conf.Desc != "" {
 		pterm.Info.Prefix = pterm.Prefix{Text: "Supfile Description:", Style: pterm.NewStyle(pterm.BgCyan, pterm.FgBlack)}
 		pterm.Info.Println(conf.Desc)
 		// fmt.Fprintf(w, "%v", conf.Desc)
 	}
 
+	l("printing commands")
 	fmt.Println("")
 	pterm.Info.Prefix = pterm.Prefix{Text: "Commands:", Style: pterm.NewStyle(pterm.BgCyan, pterm.FgBlack)}
 	pterm.Info.Println(" ")
@@ -108,19 +123,25 @@ func colorCmdUsage(conf *Supfile) {
 	}
 	pterm.DefaultTable.WithHasHeader(true).WithRowSeparator("-").WithHeaderRowSeparator("-").WithData(commands).Render()
 
+	l("printing targets")
 	pterm.Info.Prefix = pterm.Prefix{Text: "Targets:", Style: pterm.NewStyle(pterm.BgCyan, pterm.FgBlack)}
 	pterm.Info.Println("")
 	pterm.Println()
 	targets := pterm.TableData{{"Target", "Commands"}}
 	for _, name := range conf.Targets.Names {
+		l("found target: %v", name)
 		cmds, _ := conf.Targets.Get(name)
-		line := []string{name}
+		l("found commands for target %v", dump.Format(cmds))
+		line := []string{name} // Target column
 		tail := []string{}
 		for _, cmd := range cmds {
 			affixedNet, ok := conf.Targets.GetAffixByCommandName(cmd)
+			l("getting affixed network for command is ok: %v", ok)
 			if !ok {
+				l("negative path taken")
 				// TODO fix here error
 				// line = append(line, cmd+", ")
+				tail = append(tail, cmd)
 				continue
 			}
 			tail = append(tail, cmd+"@"+affixedNet.AffixedNetwork)
