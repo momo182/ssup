@@ -115,16 +115,6 @@ func (c *SSHClient) SetPassword(pwd string) {
 	c.Password = pwd
 }
 
-// GetEncryptedPassword returns the encrypted password for sudo.
-func (c *SSHClient) GetEncryptedPassword() []byte {
-	return c.encryptedPassword
-}
-
-// SetEncryptedPassword sets the encrypted password for sudo.
-func (c *SSHClient) SetEncryptedPassword(pwd []byte) {
-	c.encryptedPassword = pwd
-}
-
 // parseHost parses and normalizes <user>@<host:port> from a given string.
 func (c *SSHClient) parseHost(host string) error {
 	c.Host = host

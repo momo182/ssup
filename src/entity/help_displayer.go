@@ -47,7 +47,7 @@ func (h *HelpDisplayer) ShowAll(conf *Supfile) {
 func (h *HelpDisplayer) printColoredHelp(conf *Supfile) {
 	l := kemba.New("entity::printColoredHelp").Printf
 	l("printing intro screen now")
-	introScreen()
+	// introScreen()
 	l("printing mods status")
 	printOutModsStatus()
 	fmt.Println()
@@ -78,17 +78,17 @@ func (h *HelpDisplayer) printBWHelp(conf *Supfile) {
 	}
 }
 
-func introScreen() {
-	// ptermLogo, _ := pterm.DefaultBigText.WithLetters(
-	// 	putils.LettersFromStringWithStyle("S", pterm.NewStyle(pterm.FgLightCyan)),
-	// 	putils.LettersFromStringWithStyle("SUP", pterm.NewStyle(pterm.FgLightMagenta))).
-	// 	Srender()
+// func introScreen() {
+// 	ptermLogo, _ := pterm.DefaultBigText.WithLetters(
+// 		putils.LettersFromStringWithStyle("S", pterm.NewStyle(pterm.FgLightCyan)),
+// 		putils.LettersFromStringWithStyle("SUP", pterm.NewStyle(pterm.FgLightMagenta))).
+// 		Srender()
 
-	// pterm.DefaultCenter.Print(ptermLogo)
+// 	pterm.DefaultHeader.Print(ptermLogo)
 
-	pterm.DefaultHeader.Print(pterm.DefaultHeader.WithTextStyle(pterm.NewStyle(pterm.FgBlack)).WithBackgroundStyle(pterm.NewStyle(pterm.BgWhite)).WithMargin(10).Sprint("SSUP - Super Stackup"))
-	fmt.Println("")
-}
+// 	// pterm.DefaultHeader.Print(pterm.DefaultHeader.WithTextStyle(pterm.NewStyle(pterm.FgBlack)).WithBackgroundStyle(pterm.NewStyle(pterm.BgWhite)).WithMargin(1).Sprint("SSUP - Super Stackup"))
+// 	// fmt.Println("")
+// }
 
 func makefileUsage() {
 	fmt.Println("No networks defined, makefile mode available")

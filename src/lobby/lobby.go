@@ -216,12 +216,17 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 	case true:
 		l("wrapping command into SUDO block:")
 		// ENCRYPTION_PASSPHRASE="mystrongpassword" openssl enc -d -aes-256-cbc -pbkdf2 -in ./out.txt   -pass env:ENCRYPTION_PASSPHRASE
-		command = sf.FormatComplex("cat {hashed_pass_file} | sudo -S {shell} -c \"rm {hashed_pass_file} && source {env_file} && chmod +x {main_script} && {main_script}; rm -rf {home_folder}/{removal_mask}\"", data)
-		l("generating remote encrypted password file, w pass: %s", sudoPassword)
+		command = sf.FormatComplex("cat {hashed_pass_file} |"+
+			" sudo -S {shell} -c \"rm {hashed_pass_file} &&"+
+			" echo \"\" && source {env_file} &&"+
+			// ^^^^^^ this needs to exist to make sudo prompt go to next line
+			" chmod +x {main_script} && {main_script};"+
+			" rm -rf {home_folder}/{removal_mask}\"", data)
+		l("generating remote password file, w pass: %s", sudoPassword)
 		generateBaselineStartSet()
 		err = c.GenerateOnRemote([]byte(sudoPassword), hashedPassFile)
 		if err != nil {
-			l("failed to generate remote encrypted password file: %s", err)
+			l("failed to generate remote password file: %s", err)
 			return ""
 		}
 
