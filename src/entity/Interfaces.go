@@ -30,8 +30,6 @@ type ClientFacade interface {
 	SetTube(name string)
 	GetInventory() *Inventory
 	GetShell() string
-	GetEncryptedPassword() []byte
-	SetEncryptedPassword(password []byte)
 }
 
 type ArgParserFacade interface {

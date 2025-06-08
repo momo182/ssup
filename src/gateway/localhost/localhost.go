@@ -20,7 +20,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// Client is a wrapper over the SSH connection/sessions.
+// LocalhostClient is a wrapper over the SSH connection/sessions.
 type LocalhostClient struct {
 	cmd               *exec.Cmd
 	user              string
@@ -36,43 +36,58 @@ type LocalhostClient struct {
 	encryption        string
 }
 
+// GetHost returns the host of the LocalhostClient.
 func (c *LocalhostClient) GetHost() string {
 	return c.Host
 }
 
+// GetTube is a method to get the tube name of the LocalhostClient.
+//
+// Returns:
+//   - The name of the tube as a string.
 func (c LocalhostClient) GetTube() string {
+
 	return c.tube
 }
 
+// SetTube sets the tube name for the LocalhostClient.
+//
+// Args:
+//   - name (string): The new tube name to set.
 func (c *LocalhostClient) SetTube(name string) {
+
 	c.tube = name
 }
 
-func (c LocalhostClient) GetSSHConfig() *ssh.ClientConfig {
+// GetSSHConfig returns a pointer to an SSH client configuration struct.
+//
+// Returns:
+//   - A pointer to the SSH client config. Note that for local machines,
+//     this method always returns nil, as it doesn't need to reconnect.
+func (c *LocalhostClient) GetSSHConfig() *ssh.ClientConfig {
 	// simple passthru, local machine wont have to reconnect
-	return nil
+
+	return nil // nolint: unused
 }
 
+// GetConnection acquires a connection with the remote host using SSH.
+//
+// It is assumed that this method will only be called on the localhost client,
+// and thus does not require an existing connection.
 func (c LocalhostClient) GetConnection() *ssh.Client {
 	// simple passthru, local machine wont have to reconnect
 	return nil
 }
 
+// SetConnection sets a pre-existing SSH connection for the current session.
+//
+// This is primarily used when reconnecting to an existing host.
 func (c LocalhostClient) SetConnection(client *ssh.Client) {
 	return
 }
 
-// GetEncryptedPassword returns the encrypted password for sudo.
-func (c *LocalhostClient) GetEncryptedPassword() []byte {
-	return c.encryptedPassword
-}
-
-// SetEncryptedPassword sets the encrypted password for sudo.
-func (c *LocalhostClient) SetEncryptedPassword(pwd []byte) {
-	c.encryptedPassword = pwd
-}
-
-func (c *LocalhostClient) GetShell() string {
+// GetShell returns the shell of the LocalhostClient.
+func (c *LocalhostClient) GetShell() string { // FuncName: GetShell
 	if c.Inventory.Bash {
 		return "bash"
 	}
@@ -84,11 +99,19 @@ func (c *LocalhostClient) GetShell() string {
 	return ""
 }
 
-func (c *LocalhostClient) GetInventory() *entity.Inventory {
+// GetInventory returns the inventory of the LocalhostClient.
+func (c *LocalhostClient) GetInventory() *entity.Inventory { // FuncName: GetInventory
 	return c.Inventory
 }
 
-func (c *LocalhostClient) Connect(_ entity.NetworkHost) error {
+// Connect connects to the host using SSH.
+//
+// Args:
+//   - _ entity.NetworkHost: The network host to connect to.
+//
+// Returns:
+//   - An error if there's a problem connecting, otherwise nil.
+func (c *LocalhostClient) Connect(_ entity.NetworkHost) error { // FuncName: Connect
 	u, err := user.Current()
 	inventory, err := GatherInventory(nil)
 	if err != nil {
@@ -104,7 +127,8 @@ func (c *LocalhostClient) Connect(_ entity.NetworkHost) error {
 	return nil
 }
 
-func (c *LocalhostClient) Run(task *entity.Task) error {
+// Run starts the given task on localhost, does not wait for it to finish.
+func (c *LocalhostClient) Run(task *entity.Task) error { // FuncName: Run
 	l := kemba.New("gateway::localhost::Run").Printf
 
 	l(fmt.Sprintf("Running task: %s", dump.Format(task.Env)))
@@ -167,6 +191,7 @@ func (c *LocalhostClient) Run(task *entity.Task) error {
 	return nil
 }
 
+// Wait waits until the command finishes.
 func (c *LocalhostClient) Wait() error {
 	l := kemba.New("localhost::Wait").Printf
 	home, err := os.UserHomeDir()
@@ -221,27 +246,33 @@ func (c *LocalhostClient) Wait() error {
 	return err
 }
 
+// Close closes the client.
 func (c *LocalhostClient) Close() error {
 	return nil
 }
 
+// Stdin returns the client's standard input.
 func (c *LocalhostClient) Stdin() io.WriteCloser {
 	return c.stdin
 }
 
+// Stderr returns the client's standard error.
 func (c *LocalhostClient) Stderr() io.Reader {
 	return c.stderr
 }
 
+// Stdout returns the client's standard output.
 func (c *LocalhostClient) Stdout() io.Reader {
 	return c.stdout
 }
 
+// Prefix returns the client's prefix.
 func (c *LocalhostClient) Prefix() (string, int) {
 	host := c.user + "@localhost" + " | "
 	return entity.ResetColor + host, len(host)
 }
 
+// Write implements writing byte into stdin.
 func (c *LocalhostClient) Write(p []byte) (n int, err error) {
 	if c.stdin == nil {
 		return 0, fmt.Errorf("Trying to write to closed stdin")
