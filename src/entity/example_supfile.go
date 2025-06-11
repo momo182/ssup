@@ -5,7 +5,7 @@ var ExampleSupfile = `
 ---
 version: 0.5
 desc: |
-  example supfile example
+  example supfile
   for testing purposes only
 env:
   TOKEN: $(cat ./secrets/token.txt)

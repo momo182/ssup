@@ -6,6 +6,7 @@ import (
 	"github.com/clok/kemba"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/gookit/goutil/strutil"
+	"gopkg.in/yaml.v2"
 )
 
 // Command represents command(s) to be run remotely.
@@ -37,46 +38,37 @@ type Commands struct {
 
 func (c *Commands) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	l := kemba.New("entity::Commands.UnmarshalYAML").Printf
-	temp := make(map[string]Command)
+	var raw yaml.MapSlice
 
-	l("unmarshal to temp")
-	if err := unmarshal(&temp); err != nil {
-		l("F6A7812D-4073-43BA-B90D-2B1E07CB304E: failed to unmarshal to temp struct (%s)", err.Error())
+	l("unmarshal to raw yaml.MapSlice")
+	if err := unmarshal(&raw); err != nil {
 		return err
 	}
 
-	c.Names = make([]string, len(temp))
 	c.Cmds = make(map[string]Command)
+	c.Names = make([]string, 0, len(raw))
 
-	l("got items")
-	i := 0
-	for key, value := range temp {
-		l("got item")
-		c.Names[i] = key
-		value.Name = key
-		rawCommand := value.Run
-		value.Run = processSourceLinks(rawCommand)
-		c.Cmds[key] = value
+	for _, item := range raw {
+		key, ok := item.Key.(string)
+		if !ok {
+			continue // or return error
+		}
+		valBytes, err := yaml.Marshal(item.Value)
+		if err != nil {
+			return err
+		}
+		var cmd Command
+		if err := yaml.Unmarshal(valBytes, &cmd); err != nil {
+			return err
+		}
+
+		cmd.Name = key
+		cmd.Run = processSourceLinks(cmd.Run)
+
+		c.Names = append(c.Names, key)
+		c.Cmds[key] = cmd
 
 		l("item key: %s", key)
-		l("item value:\n---------------\n"+
-			"name: %s\n"+
-			"desc: %s\n"+
-			"local: %v\n"+
-			"run:\n%s\n"+
-			"script: %s\n"+
-			"upload: %v\n"+
-			"fetch: %v\n"+
-			"sudo: %v\n"+
-			"---------------", value.Name,
-			value.Desc,
-			value.Local,
-			value.Run,
-			value.Script,
-			value.Upload,
-			value.Fetch,
-			value.Sudo)
-		i++
 	}
 	return nil
 }
