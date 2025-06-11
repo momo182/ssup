@@ -39,15 +39,11 @@ func RunShellcheck(supFile *entity.Supfile) error {
 
 			firstLine := strings.Split(command.Run, "\n")[0]
 			l("firstLine: %v", firstLine)
-			if strings.Contains(firstLine, "fish") {
-				l("command.Run contains fish, skipping shellcheck")
-				continue
-			}
-			if strings.Contains(firstLine, "nu") {
-				l("command.Run contains nu shell, skipping shellcheck")
-				continue
-			}
-			if strings.Contains(firstLine, "nosc") {
+
+			// expect that #! in the first line is meant to override the interpreter
+			// treat as the user knows what they are doing
+			// and we do not want to stand in the way of that
+			if strings.Contains(firstLine, "#!") {
 				l("command.Run contains nosc tag, skipping shellcheck")
 				continue
 			}
