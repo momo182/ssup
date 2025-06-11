@@ -33,6 +33,7 @@ func init() {
 	flag.BoolVar(&initialArgs.DisablePrefix, "disable-prefix", false, "Disable hostname prefix")
 
 	flag.BoolVar(&initialArgs.ShowVersion, "v", false, "Print version")
+	flag.BoolVar(&initialArgs.ShowExample, "x", false, "Print eXample Supfile and exit")
 	flag.BoolVar(&initialArgs.ShowVersion, "version", false, "Print version")
 	flag.BoolVar(&initialArgs.DisableColor, "c", false, "Disable color")
 	flag.BoolVar(&initialArgs.DisableColor, "no-color", false, "Disable color")
@@ -56,6 +57,11 @@ func main() {
 	if initialArgs.ShowHelp {
 		fmt.Fprintln(os.Stderr, entity.ErrUsage, "\n\nOptions:")
 		flag.PrintDefaults()
+		return
+	}
+
+	if initialArgs.ShowExample {
+		fmt.Println(entity.ExampleSupfile)
 		return
 	}
 

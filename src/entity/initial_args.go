@@ -13,6 +13,7 @@ type InitialArgs struct {
 	DisablePrefix bool
 
 	ShowVersion  bool
+	ShowExample  bool
 	ShowHelp     bool
 	DisableColor bool
 	CommandArgs  []string
