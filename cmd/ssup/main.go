@@ -111,7 +111,7 @@ func main() {
 
 		if e := shellcheckService.RunShellcheck(conf); e != nil {
 			fmt.Fprintln(os.Stderr, e)
-			os.Exit(1442)
+			os.Exit(42)
 		}
 
 		usecase.CheckInitialArgs(network, initialArgs)
