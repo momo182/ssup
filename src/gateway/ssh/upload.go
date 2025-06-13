@@ -17,7 +17,7 @@ import (
 )
 
 // Upload local file to remote server
-func (c *SSHClient) Upload(localPath, remotePath string) error {
+func (c *RemoteClient) Upload(localPath, remotePath string) error {
 	l := kemba.New("gw::sshclient::Upload").Printf
 	l("uploading files with UI feedback")
 
@@ -43,7 +43,7 @@ func (c *SSHClient) Upload(localPath, remotePath string) error {
 }
 
 // GenerateOnRemote basically cats file content to "~/" + entity.TASK_TAIL on remote
-func (c *SSHClient) GenerateOnRemote(data []byte, remotePath string) error {
+func (c *RemoteClient) GenerateOnRemote(data []byte, remotePath string) error {
 	l := kemba.New("gw::sshclient::GenerateOnRemote").Printf
 	var shellcheck entity.ShellCheckFacade
 	shellcheck = &sc.ShellCheckProvider{}

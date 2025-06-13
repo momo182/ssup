@@ -374,14 +374,9 @@ func (c *LocalhostClient) GenerateOnRemote(data []byte, dest string) error {
 
 	// if /System/Library is directory
 	// check if dest contains /home/username and replace it with home from UserHomeDir
-	SysLibHandle, e := os.Stat("/System/Library")
-	if e != nil {
-		return oops.Trace("6B937FB1-90E2-43A9-A152-1D218AF8A352").
-			Hint("failed to check if /System/Library is directory").
-			Wrap(e)
-	}
+	_, e = os.Stat("/System/Library")
 
-	if SysLibHandle.IsDir() {
+	if e == nil {
 		l("/System/Library is dir")
 		dest = strings.Replace(dest, "/home/"+c.user, home, 1)
 	}

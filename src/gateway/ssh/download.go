@@ -13,7 +13,7 @@ import (
 )
 
 // Download file from remote
-func (c *SSHClient) Download(remotePath, localPath string, silent bool) error {
+func (c *RemoteClient) Download(remotePath, localPath string, silent bool) error {
 	l := kemba.New("gw::ssh::download").Printf
 	l("will download %s to local:%s", remotePath, localPath)
 

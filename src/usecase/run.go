@@ -99,7 +99,7 @@ func (sup *Stackup) connectToHostsHelper(network *entity.Network, bastion entity
 	errCh := make(chan error, len(network.Hosts))
 
 	logger("about to connect to hosts:\n%v", network.Hosts)
-	connectToHosts(network, &connectWg, errCh, clientCh, bastion.(*clientSSH.SSHClient))
+	connectToHosts(network, &connectWg, errCh, clientCh, bastion.(*clientSSH.RemoteClient))
 	connectWg.Wait()
 	close(clientCh)
 	close(errCh)
@@ -107,7 +107,7 @@ func (sup *Stackup) connectToHostsHelper(network *entity.Network, bastion entity
 	var clients []entity.ClientFacade
 	maxLen := 0
 	for client := range clientCh {
-		if remote, ok := client.(*clientSSH.SSHClient); ok {
+		if remote, ok := client.(*clientSSH.RemoteClient); ok {
 			defer remote.Close()
 		}
 		_, prefixLen := client.Prefix()
@@ -279,7 +279,7 @@ func (sup *Stackup) getPrefix(client entity.ClientFacade, maxLen int, isMakefile
 	return prefix
 }
 
-func connectToHosts(network *entity.Network, wg *sync.WaitGroup, errCh chan error, clientCh chan entity.ClientFacade, bastion *clientSSH.SSHClient) {
+func connectToHosts(network *entity.Network, wg *sync.WaitGroup, errCh chan error, clientCh chan entity.ClientFacade, bastion *clientSSH.RemoteClient) {
 	l := kemba.New("usecase::run::connectToHosts").Printf
 	l("will range over hosts: %v", len(network.Hosts))
 	for i, host := range network.Hosts {
@@ -321,7 +321,7 @@ func connectToHosts(network *entity.Network, wg *sync.WaitGroup, errCh chan erro
 			l("filling in user,env and creds")
 			envStore := new(entity.EnvList)
 			envStore.Set("SUP_HOST", host.Host)
-			remote := &clientSSH.SSHClient{
+			remote := &clientSSH.RemoteClient{
 				Env:      envStore,
 				User:     network.User,
 				Color:    entity.Colors[i%len(entity.Colors)],
@@ -354,13 +354,13 @@ func connectToHosts(network *entity.Network, wg *sync.WaitGroup, errCh chan erro
 	return
 }
 
-func (*Stackup) connectToBastionHost(network *entity.Network) (*clientSSH.SSHClient, error) {
+func (*Stackup) connectToBastionHost(network *entity.Network) (*clientSSH.RemoteClient, error) {
 	l := kemba.New("usecase::run::connectToBastionHost").Printf
 
 	l("prepping ssh client to bastion: %s", network.Bastion)
-	var bastion *clientSSH.SSHClient
+	var bastion *clientSSH.RemoteClient
 	if network.Bastion != "" {
-		bastion = &clientSSH.SSHClient{}
+		bastion = &clientSSH.RemoteClient{}
 		bastionHost := entity.NetworkHost{
 			Host: network.Bastion,
 		}
