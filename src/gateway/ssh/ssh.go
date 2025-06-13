@@ -342,6 +342,9 @@ func (c *SSHClient) Run(task *entity.Task) error {
 			return entity.ErrTask{Task: task, Reason: fmt.Sprintf("request for pseudo terminal failed: %s", err)}
 		}
 		l("tty requested")
+		// print user a message that we're requesing a TTY
+		// and that the system awaits input from user
+		fmt.Printf("(%s)>>MODE INTERACTIVE SET:\n", c.Host)
 	}
 
 	// actuall create command from task
