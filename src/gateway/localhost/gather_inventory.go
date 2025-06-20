@@ -15,28 +15,10 @@ func GatherInventory(remote *ssh.Client) (*entity.Inventory, error) {
 	inventory := &entity.Inventory{}
 
 	if remote != nil {
-		return nil, fmt.Errorf("remote connection is not nil for local client, wont deal with magic...")
+		return nil, fmt.Errorf("remote connection is not nil for local client, this should never happen")
 	}
 
 	l("Gathering inventory on localhost")
-
-	// Check bash command
-	l("check bash installation: %v", inventory.CheckBashCommand())
-	bashCmd := inventory.CheckBashCommand()
-	bashOutput, err := runLocalCommand(bashCmd)
-	if err != nil {
-		return nil, fmt.Errorf("failed to run bash command: %v", err)
-	}
-	inventory.Bash = strings.TrimSpace(string(bashOutput)) != ""
-
-	// Check sh command
-	l("check sh installation: %v", inventory.CheckShCommand())
-	shCmd := inventory.CheckShCommand()
-	shOutput, err := runLocalCommand(shCmd)
-	if err != nil {
-		return nil, fmt.Errorf("failed to run sh command: %v", err)
-	}
-	inventory.Sh = strings.TrimSpace(string(shOutput)) != ""
 
 	// check arch command
 	archCmd := inventory.DetectArchCommand()
@@ -74,6 +56,24 @@ func GatherInventory(remote *ssh.Client) (*entity.Inventory, error) {
 	}
 	inventory.User = strings.TrimSpace(string(userOutput))
 	inventory.IsLocal = true
+
+	// Check bash command
+	l("check bash installation: %v", inventory.CheckBashCommand())
+	bashCmd := inventory.CheckBashCommand()
+	bashOutput, err := runLocalCommand(bashCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run bash command: %v", err)
+	}
+	inventory.Bash = strings.TrimSpace(string(bashOutput)) != ""
+
+	// Check sh command
+	l("check sh installation: %v", inventory.CheckShCommand())
+	shCmd := inventory.CheckShCommand()
+	shOutput, err := runLocalCommand(shCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run sh command: %v", err)
+	}
+	inventory.Sh = strings.TrimSpace(string(shOutput)) != ""
 
 	return inventory, nil
 }

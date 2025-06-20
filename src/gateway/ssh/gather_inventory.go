@@ -15,23 +15,6 @@ func GatherInventory(remote *ssh.Client) (*entity.Inventory, error) {
 	inventory := &entity.Inventory{}
 
 	l("Gathering inventory on %v", remote.RemoteAddr())
-	// Check bash command
-	l("check bash installation: %v", inventory.CheckBashCommand())
-	bashCmd := inventory.CheckBashCommand()
-	bashOutput, err := runRemoteCommand(remote, bashCmd)
-	if err != nil {
-		return nil, fmt.Errorf("failed to run bash command: %v", err)
-	}
-	inventory.Bash = strings.TrimSpace(string(bashOutput)) != ""
-
-	// Check sh command
-	l("check sh installation: %v", inventory.CheckShCommand())
-	shCmd := inventory.CheckShCommand()
-	shOutput, err := runRemoteCommand(remote, shCmd)
-	if err != nil {
-		return nil, fmt.Errorf("failed to run sh command: %v", err)
-	}
-	inventory.Sh = strings.TrimSpace(string(shOutput)) != ""
 
 	// check arch command
 	archCmd := inventory.DetectArchCommand()
@@ -68,6 +51,24 @@ func GatherInventory(remote *ssh.Client) (*entity.Inventory, error) {
 		return nil, fmt.Errorf("failed to run sh command: %v", err)
 	}
 	inventory.User = strings.TrimSpace(string(userOutput))
+
+	// Check bash command
+	l("check bash installation: %v", inventory.CheckBashCommand())
+	bashCmd := inventory.CheckBashCommand()
+	bashOutput, err := runRemoteCommand(remote, bashCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run bash command: %v", err)
+	}
+	inventory.Bash = strings.TrimSpace(string(bashOutput)) != ""
+
+	// Check sh command
+	l("check sh installation: %v", inventory.CheckShCommand())
+	shCmd := inventory.CheckShCommand()
+	shOutput, err := runRemoteCommand(remote, shCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run sh command: %v", err)
+	}
+	inventory.Sh = strings.TrimSpace(string(shOutput)) != ""
 
 	return inventory, nil
 }

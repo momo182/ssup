@@ -110,30 +110,11 @@ func insertSSUPCommands(command, homeDir string) string {
 // which shares the same code defined in lobby.RegisterCmd
 func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList, command string, c entity.ClientFacade, task entity.Task, isLocal bool) string {
 	l := kemba.New("lobby::FormatCommandBasedOnSudo").Printf
-	l("checking for SUP_SUDO")
-	var err error
-	var connectionUser string
 	RegisterCmd := RegisterCmdBash
+	var err error
 
-	// split command to lines
-	lines := strings.Split(command, "\n")
-	head := lines[0]
-	l("head: %s", head)
-
-	endsOnNu := func(head string) bool {
-		return strings.HasSuffix(strings.TrimSpace(head), "/nu")
-	}
-
-	searchesNuViaEnv := func(head string) bool {
-		return strings.HasSuffix(strings.TrimSpace(head), "/env nu")
-	}
-
-	// check if head is ending with '/nu'
-	// if it is, then replace RegisterCmd with empty string
-	if endsOnNu(head) || searchesNuViaEnv(head) {
-		l("dropping register command for nu scripts")
-		RegisterCmd = RegisterCmdDisabled
-	}
+	l("checking for SUP_SUDO")
+	RegisterCmd = prepRegisterCommand(command, RegisterCmd)
 
 	inv := c.GetInventory()
 	if inv == nil {
@@ -141,28 +122,8 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 		os.Exit(1)
 	}
 
-	if isLocal {
-		// get cutrtent user
-		connectionUser = inv.User
-	} else {
-		connectionUserHandle := c.GetSSHConfig()
-		if connectionUserHandle == nil {
-			l("no connectionUserHandle")
-			fmt.Println("ERROR=F9C4FE2F-28B6-4450-B195-9EAADA5AB2FB: no user handle found")
-			os.Exit(22)
-		}
-		connectionUser = connectionUserHandle.User
-	}
-
-	homeRootFolder := "/home"
-	if inv.OsType == "Darwin" {
-		homeRootFolder = "/Users"
-	}
-
-	connUserHomeDir := homeRootFolder + string(os.PathSeparator) + connectionUser
-	if connectionUser == "root" {
-		connUserHomeDir = "/root"
-	}
+	connUserHomeDir := inv.Home
+	l("inv.Home: %s", connUserHomeDir)
 
 	hashedPassFile := connUserHomeDir + string(os.PathSeparator) + entity.SSUP_WORK_FOLDER + entity.HASHED_PASS
 	mainScriptFile := connUserHomeDir + string(os.PathSeparator) + entity.SSUP_WORK_FOLDER + entity.MAIN_SCRIPT
@@ -240,6 +201,29 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 
 	l("done formatting command: %s", command)
 	return command
+}
+
+func prepRegisterCommand(command string, RegisterCmd string) string {
+	l := kemba.New("lobby::prepRegisterCommand").Printf
+
+	lines := strings.Split(command, "\n")
+	head := lines[0]
+	l("head: %s", head)
+
+	endsOnNu := func(head string) bool {
+		return strings.HasSuffix(strings.TrimSpace(head), "/nu")
+	}
+
+	searchesNuViaEnv := func(head string) bool {
+		return strings.HasSuffix(strings.TrimSpace(head), "/env nu")
+	}
+
+	if endsOnNu(head) || searchesNuViaEnv(head) {
+		l("dropping register command for nu scripts")
+		RegisterCmd = RegisterCmdDisabled
+	}
+
+	return RegisterCmd
 }
 
 // func encryptPassword(password, encryptionPhrase string) ([]byte, error) {

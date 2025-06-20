@@ -46,7 +46,7 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 
 		task := entity.Task{
 			Run:  string(data),
-			TTY:  true,
+			TTY:  cmd.Stdin,
 			Sudo: cmd.Sudo,
 		}
 
@@ -79,7 +79,7 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 		task := &entity.Task{
 			Run:     cmd.Local,
 			Clients: []entity.ClientFacade{local},
-			TTY:     true,
+			TTY:     cmd.Stdin,
 			Env:     env,
 		}
 
@@ -93,7 +93,7 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 	if cmd.Run != "" {
 		task := entity.Task{
 			Run:  cmd.Run,
-			TTY:  true,
+			TTY:  cmd.Stdin,
 			Sudo: cmd.Sudo,
 			Env:  env,
 		}

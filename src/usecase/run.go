@@ -184,9 +184,7 @@ func (sup *Stackup) handleIO(client entity.ClientFacade, prefix string, wg *sync
 	l := kemba.New("uc::run::handleIO").Printf
 	l("handling I/O")
 	l("negative checks")
-	// isLocal := client.GetInventory().IsLocal
 
-	// if !isLocal {
 	wg.Add(2)
 	l("adding two wgs")
 	go func() {
@@ -199,7 +197,6 @@ func (sup *Stackup) handleIO(client entity.ClientFacade, prefix string, wg *sync
 		l("wg for stderr")
 		sup.copyOutput(client.Stderr(), os.Stderr, prefix, "reading STDERR failed")
 	}()
-	// }
 }
 
 // Helper function to copy output with prefix.
