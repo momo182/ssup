@@ -2,5 +2,5 @@ bin/
 *.sw?
 .vscode/
 .vscode/bookmarks.json
-build/
+dist/
 Supfile.yml
