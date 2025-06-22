@@ -235,6 +235,48 @@ func (c *RemoteClient) Connect(host entity.NetworkHost) error {
 	return c.ConnectWith(host, ssh.Dial)
 }
 
+func copyDistFolders(c *RemoteClient) error {
+	l := kemba.New("gw::ssh::SSHClient.copyDistFolders").Printf
+	l("copying dist folder")
+
+	if c == nil {
+		return errors.New("client is nil")
+	}
+
+	if c.Inventory == nil {
+		return errors.New("client inventory is nil")
+	}
+
+	l(dump.Format(c.Inventory))
+
+	// check if dist of ssupdist is present and if so copy it
+	// to remote host ~/.local/ssup/dist
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return errors.New("failed to get current directory")
+	}
+
+	srcPath := filepath.Join(currentDir, "dist")
+
+	_, err = os.Stat(srcPath)
+	if err != nil {
+		l("dist folder not found at %v", srcPath)
+		return nil
+	}
+	l("dist folder found at %v", srcPath)
+
+	sep := "/"
+	if c.Inventory.OsType != "Darwin" && c.Inventory.OsType != "Linux" {
+		sep = "\\"
+	}
+
+	l("sep is: '%v'", sep)
+	destPath := c.Inventory.Home + sep + ".local" + sep + "ssup" + sep + "dist"
+	l("destPath is: '%v'")
+
+	return c.Upload(srcPath, destPath)
+}
+
 // ConnectWith creates a SSH connection to a specified host. It will use dialer to establish the
 // connection.
 // TODO: Split Signers to its own method.
@@ -263,6 +305,13 @@ func (c *RemoteClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) 
 		return ErrInv{c.User, c.Host, err.Error()}
 	}
 	c.Inventory = inventory
+
+	// do dist copy here
+	err = copyDistFolders(c)
+	if err != nil {
+		return fmt.Errorf("failed to copy dist folders for remote client = %s", c.Host)
+	}
+
 	c.connOpened = true
 	l("done creating ssh client")
 

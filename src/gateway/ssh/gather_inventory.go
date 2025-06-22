@@ -34,24 +34,6 @@ func GatherInventory(remote *ssh.Client) (*entity.Inventory, error) {
 	}
 	inventory.OsType = strings.TrimSpace(string(osTypeOutput))
 
-	// check home command
-	homeCmd := inventory.CheckHomeCommand()
-	l("check home dir: %v", homeCmd)
-	homeOutput, err := runRemoteCommand(remote, homeCmd)
-	if err != nil {
-		return nil, fmt.Errorf("failed to run sh command: %v", err)
-	}
-	inventory.Home = strings.TrimSpace(string(homeOutput))
-
-	// check user command
-	userCmd := inventory.CheckUserCommand()
-	l("check user: %v", userCmd)
-	userOutput, err := runRemoteCommand(remote, userCmd)
-	if err != nil {
-		return nil, fmt.Errorf("failed to run sh command: %v", err)
-	}
-	inventory.User = strings.TrimSpace(string(userOutput))
-
 	// Check bash command
 	l("check bash installation: %v", inventory.CheckBashCommand())
 	bashCmd := inventory.CheckBashCommand()
@@ -70,6 +52,24 @@ func GatherInventory(remote *ssh.Client) (*entity.Inventory, error) {
 	}
 	inventory.Sh = strings.TrimSpace(string(shOutput)) != ""
 
+	// check home command
+	homeCmd := inventory.CheckHomeCommand()
+	l("check home dir: %v", homeCmd)
+	homeOutput, err := runRemoteCommand(remote, homeCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run sh command: %v", err)
+	}
+	inventory.Home = strings.TrimSpace(string(homeOutput))
+
+	// check user command
+	userCmd := inventory.CheckUserCommand()
+	l("check user: %v", userCmd)
+	userOutput, err := runRemoteCommand(remote, userCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run sh command: %v", err)
+	}
+	inventory.User = strings.TrimSpace(string(userOutput))
+
 	return inventory, nil
 }
 
@@ -80,8 +80,9 @@ func runRemoteCommand(remote *ssh.Client, command []string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to create session: %v", err)
 	}
 	defer session.Close()
-	l("run command: %v", command)
-	output, err := session.Output(strings.Join(command, " "))
+	fullCommand := strings.Join(command, " ")
+	l("run command: '%v'", fullCommand)
+	output, err := session.Output(fullCommand)
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			// Command exited with a non-zero status, but we still want to capture the output

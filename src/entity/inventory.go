@@ -57,7 +57,7 @@ func (i *Inventory) CheckHomeCommand() []string {
 
 func (i *Inventory) CheckUserCommand() []string {
 	return []string{
-		"echo", "$USER",
+		i.GetShell(), "-c", "\"echo $USER\"",
 	}
 }
 
@@ -82,7 +82,7 @@ func (i *Inventory) GetShell() string {
 
 func (i *Inventory) GetHomeUnixCommand() []string {
 	return []string{
-		"echo", "$HOME",
+		i.GetShell(), "-c", "\"echo $HOME\"",
 	}
 }
 

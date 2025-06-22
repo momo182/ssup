@@ -1,0 +1,1 @@
+export OUTPUT_DIR="build"; export SUP_NETWORK="localhost"; export SUP_TIME="2025-06-22T17:40:13Z"; export SUP_USER="k.pechenenko"; export SUP_ENV="-e SUP_NETWORK="localhost" -e SUP_TIME="2025-06-22T17:40:13Z" -e SUP_USER="k.pechenenko" -e OUTPUT_DIR="build""; export SUP_HOST="localhost"; 

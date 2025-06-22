@@ -178,12 +178,13 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 		l("wrapping command into SUDO block:")
 		// ENCRYPTION_PASSPHRASE="mystrongpassword" openssl enc -d -aes-256-cbc -pbkdf2 -in ./out.txt   -pass env:ENCRYPTION_PASSPHRASE
 		command = sf.FormatComplex(
-			"cat {hashed_pass_file} |"+
-				" sudo -S {shell} -c \"rm {hashed_pass_file} &&"+
-				" echo \"\" && source {env_file} &&"+
+			"cat {hashed_pass_file} "+
+				"| sudo -S {shell} -c \"rm {hashed_pass_file} "+
+				"&& export PATH=\"{home_folder}/.local/ssup/dist:$PATH\""+
+				"&& echo \"\" && source {env_file} "+
 				// ^^^^^^ this needs to exist to make sudo prompt go to next line
-				" chmod +x {main_script} && {main_script};"+
-				" rm -rf {home_folder}/{removal_mask}\"",
+				"&& chmod +x {main_script} && {main_script}"+
+				"; rm -rf {home_folder}/{removal_mask}\"",
 			data)
 		l("generating remote password file, w pass: %s", sudoPassword)
 		generateBaselineStartSet()
@@ -195,7 +196,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 
 	default:
 		l("wrapping command into normal block:")
-		command = sf.FormatComplex("{shell} -c 'source {env_file} && chmod +x {main_script} && {main_script}; rm -rf {home_folder}/{removal_mask}'", data)
+		command = sf.FormatComplex("{shell} -c 'export PATH=\"{home_folder}/.local/ssup/dist:$PATH\" && source {env_file} && chmod +x {main_script} && {main_script}; rm -rf {home_folder}/{removal_mask}'", data)
 		generateBaselineStartSet()
 	}
 
