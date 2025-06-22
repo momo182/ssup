@@ -1,7 +1,8 @@
 ---
 version: 0.5
+desc: tools to build and publish released binaries
 env:
-  OUTPUT_DIR: build
+  OUTPUT_DIR: dist
 commands:
   build-release:
     desc: |
@@ -77,3 +78,19 @@ commands:
       file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
 
       tree ./build
+  publish_release:
+    env:
+      RELEASE_BODY: $(nu -c "open ./changes/changes_0.6.0.yml | get changelog | to text")
+      REPO: momo182/ssup
+      TAG: v0.6.0
+      RELEASE_NAME: Release $TAG
+      ASSETS_DIR: ./dist
+    desc: publish resease on GH using gh tool
+    local: |
+      echo "${RELEASE_BODY}"
+      exit 0
+      #shellcheck disable=SC2317
+      gh release create "$TAG" "$ASSETS_DIR/*" \
+      --repo "$REPO" \
+      --title "$RELEASE_NAME" \
+      --notes "$RELEASE_BODY"
