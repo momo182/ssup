@@ -465,6 +465,15 @@ it is now possible to use shebang in the first line of your script.
 Due to the nature of how ssup executes commands, it will create a script on the remote machine
 first, and launch that script second, to use the shebang.
 
+### ./dist folder support
+
+if you create a `dist` folder in your project root,
+any binaries created in that folder will be available for user on remote machine.
+contents of the folder are copied on every launch, so if you updated a binary in that folder,
+it will be updated on next launch too.
+
+i tend to use `dist` folder for distributing nushell binaries and later  
+utilizing shebang support by adding shebang `#!/usr/bin/env nu`
 
 ### Namespaces
 
