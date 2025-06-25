@@ -408,7 +408,7 @@ See [example Supfile](./example/Supfile).
 # Supfile
 ---
 version: 0.4
-
+desc: supfile description goes here...
 # Global environment variables
 env:
   NAME: api
@@ -447,6 +447,24 @@ targets:
 - `$SUP_USER` - User who invoked sup command.
 - `$SUP_TIME` - Date/time of sup command invocation.
 - `$SUP_ENV` - Environment variables provided on sup command invocation. You can pass `$SUP_ENV` to another `sup` or `docker` commands in your Supfile.
+
+
+### Shellcheck support
+
+if you happen to have shellcheck installed on your machine
+ssup will be able to check your shell scripts for errors.
+Shellckeck will run before any connections are done,
+so any errors will halt the execution of your Supfile.
+
+SHELLCHECK WILL NOT RUN IF SET UP SHEBANG FOR YOUR COMMAND  
+more on this below...
+
+### shebang support
+
+it is now possible to use shebang in the first line of your script.
+Due to the nature of how ssup executes commands, it will create a script on the remote machine
+first, and launch that script second, to use the shebang.
+
 
 ### Namespaces
 
@@ -508,7 +526,7 @@ example supfile to demonstrate namespaces usage:
 ```yaml
 ---
 version: 0.5
-
+desc: example to demonstrate namespaces usage
 networks:
   l:
     hosts:
