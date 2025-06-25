@@ -122,7 +122,7 @@ func NewSupfile(data []byte) (*entity.Supfile, error) {
 
 		fallthrough
 
-	case "0.4", "0.5":
+	case "0.4", "0.5", "0.6":
 
 	default:
 		return nil, entity.ErrUnsupportedSupfileVersion{Msg: "unsupported Supfile version " + conf.Version}

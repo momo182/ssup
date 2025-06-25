@@ -39,7 +39,7 @@ Extensions to original sup
 
 # Installation
 
-    $ go get -u github.com/pressly/sup/cmd/sup
+    $ go get -u github.com/momo182/ssup/cmd/ssup
 
 # Usage
 
@@ -343,6 +343,60 @@ targets:
 is equivalent to
 
 `$ sup production build pull migrate-db-up stop-rm-run health slack-notify airbrake-notify`
+
+### Target mapping
+
+now it's possible to map target names to networks.
+This way you can map the whole journey of your code to a single target.
+To illustrate this, here is an example of a Supfile that builds and deploys
+a telegram bot:
+
+```yaml
+---
+version: 0.5
+env:
+  TG_BOT_TOKEN: $(cat secrets/token.txt)
+
+networks:
+  local:
+    hosts:
+    - 127.0.0.1
+  remote:
+    hosts:
+    - user@example.com | $(cat secrets/example_password)
+
+commands:
+  run:
+    desc: run the bot locally
+    local: |
+      cargo run
+
+  build-release:
+    desc: release build for x86_64-unknown-linux-gnu
+    local: |
+      cargo zigbuild --target x86_64-unknown-linux-gnu --release
+      file ~/git/yatgbotrs/target/x86_64-unknown-linux-gnu/release/yatgbotrs
+
+  upload:
+    local: |
+      rsync -avzh ~/git/yatgbotrs/target/x86_64-unknown-linux-gnu/release/yatgbotrs user@example.com:yatgbotrs
+
+  setup:
+    desc: move yatgbotrs to right place on remote
+    run: |
+      rm -rfv ~/yatgbot/yatgbot
+      mv -v ~/yatgbotrs ~/yatgbot/yatgbot
+      sudo systemctl restart yatgbot.service && echo "yatgbot restarted" || echo "yatgbot not restarted"
+
+targets:
+  do_remote:
+  - build-release local
+  - upload local
+  - setup remote
+```
+^^^^ here comes the fun part, notice that **build-release** and **upload**  
+are run locally and **setup** is run remotely.  
+
 
 # Supfile
 
