@@ -23,8 +23,8 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 )
 
-// SSHClient is a wrapper over the SSH connection/sessions.
-type SSHClient struct {
+// RemoteClient is a wrapper over the SSH connection/sessions.
+type RemoteClient struct {
 	conn              *ssh.Client
 	sess              *ssh.Session
 	ConnectOrder      entity.ConnectOrder
@@ -75,48 +75,48 @@ func (e ErrInv) Error() string {
 }
 
 // GetHost returns the host of the SSHClient.
-func (c *SSHClient) GetHost() string {
+func (c *RemoteClient) GetHost() string {
 	return c.Host
 }
 
 // GetTube returns the tube of the SSHClient.
-func (c SSHClient) GetTube() string {
+func (c RemoteClient) GetTube() string {
 	return c.tube
 }
 
 // GetConnection returns the client configuration of the SSHClient.
-func (c SSHClient) GetSSHConfig() *ssh.ClientConfig {
+func (c RemoteClient) GetSSHConfig() *ssh.ClientConfig {
 	return c.ConnectOrder.ClientConfig
 }
 
 // GetConnection returns the client configuration of the SSHClient.
-func (c SSHClient) GetConnection() *ssh.Client {
+func (c RemoteClient) GetConnection() *ssh.Client {
 	return c.conn
 }
 
 // SetConnection sets the SSH client connection of the SSHClient.
-func (c *SSHClient) SetConnection(client *ssh.Client) {
+func (c *RemoteClient) SetConnection(client *ssh.Client) {
 	c.conn = client
 	c.connOpened = true
 }
 
 // SetTube sets the tube of the SSHClient.
-func (c *SSHClient) SetTube(name string) {
+func (c *RemoteClient) SetTube(name string) {
 	c.tube = name
 }
 
 // GetPassword returns the password of the SSHClient.
-func (c *SSHClient) GetPassword() string {
+func (c *RemoteClient) GetPassword() string {
 	return c.Password
 }
 
 // SetPassword sets the password of the SSHClient.
-func (c *SSHClient) SetPassword(pwd string) {
+func (c *RemoteClient) SetPassword(pwd string) {
 	c.Password = pwd
 }
 
 // parseHost parses and normalizes <user>@<host:port> from a given string.
-func (c *SSHClient) parseHost(host string) error {
+func (c *RemoteClient) parseHost(host string) error {
 	c.Host = host
 
 	// Remove extra "ssh://" schema
@@ -200,7 +200,7 @@ type SSHDialFunc func(net, addr string, config *ssh.ClientConfig) (*ssh.Client, 
 
 // Connect creates SSH connection to a specified host.
 // It expects the host of the form "[ssh://]host[:port]".
-func (c *SSHClient) Connect(host entity.NetworkHost) error {
+func (c *RemoteClient) Connect(host entity.NetworkHost) error {
 	l := kemba.New("gw::ssh::SSHClient.Connect").Printf
 
 	err := c.parseHost(host.Host)
@@ -235,10 +235,52 @@ func (c *SSHClient) Connect(host entity.NetworkHost) error {
 	return c.ConnectWith(host, ssh.Dial)
 }
 
+func copyDistFolders(c *RemoteClient) error {
+	l := kemba.New("gw::ssh::SSHClient.copyDistFolders").Printf
+	l("copying dist folder")
+
+	if c == nil {
+		return errors.New("client is nil")
+	}
+
+	if c.Inventory == nil {
+		return errors.New("client inventory is nil")
+	}
+
+	l(dump.Format(c.Inventory))
+
+	// check if dist of ssupdist is present and if so copy it
+	// to remote host ~/.local/ssup/dist
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return errors.New("failed to get current directory")
+	}
+
+	srcPath := filepath.Join(currentDir, "dist")
+
+	_, err = os.Stat(srcPath)
+	if err != nil {
+		l("dist folder not found at %v", srcPath)
+		return nil
+	}
+	l("dist folder found at %v", srcPath)
+
+	sep := "/"
+	if c.Inventory.OsType != "Darwin" && c.Inventory.OsType != "Linux" {
+		sep = "\\"
+	}
+
+	l("sep is: '%v'", sep)
+	destPath := c.Inventory.Home + sep + ".local" + sep + "ssup" + sep + "dist"
+	l("destPath is: '%v'")
+
+	return c.Upload(srcPath, destPath)
+}
+
 // ConnectWith creates a SSH connection to a specified host. It will use dialer to establish the
 // connection.
 // TODO: Split Signers to its own method.
-func (c *SSHClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) error {
+func (c *RemoteClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) error {
 	l := kemba.New("gw::ssh::SSHClient.ConnectWith").Printf
 	l("connecting to %v", host)
 	var err error
@@ -263,6 +305,13 @@ func (c *SSHClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) err
 		return ErrInv{c.User, c.Host, err.Error()}
 	}
 	c.Inventory = inventory
+
+	// do dist copy here
+	err = copyDistFolders(c)
+	if err != nil {
+		return fmt.Errorf("failed to copy dist folders for remote client = %s", c.Host)
+	}
+
 	c.connOpened = true
 	l("done creating ssh client")
 
@@ -279,7 +328,7 @@ func isConnected(client *ssh.Client) bool {
 }
 
 // Run runs the task.Run command remotely on c.host.
-func (c *SSHClient) Run(task *entity.Task) error {
+func (c *RemoteClient) Run(task *entity.Task) error {
 	l := kemba.New("gateway::ssh::Run").Printf
 	l("negative programming checks")
 
@@ -362,7 +411,7 @@ func (c *SSHClient) Run(task *entity.Task) error {
 	return nil
 }
 
-func (c *SSHClient) negativeChecksBeforeRun(task *entity.Task) error {
+func (c *RemoteClient) negativeChecksBeforeRun(task *entity.Task) error {
 	if task == nil {
 		return errors.New("got nil task")
 	}
@@ -385,7 +434,7 @@ func (c *SSHClient) negativeChecksBeforeRun(task *entity.Task) error {
 	return nil
 }
 
-func (c *SSHClient) GetShell() string {
+func (c *RemoteClient) GetShell() string {
 	if c.Inventory.Bash {
 		return "bash"
 	}
@@ -397,13 +446,13 @@ func (c *SSHClient) GetShell() string {
 	return ""
 }
 
-func (c *SSHClient) GetInventory() *entity.Inventory {
+func (c *RemoteClient) GetInventory() *entity.Inventory {
 	return c.Inventory
 }
 
 // Wait waits until the remote command finishes and exits.
 // It closes the SSH session.
-func (c *SSHClient) Wait() error {
+func (c *RemoteClient) Wait() error {
 	l := kemba.New("gateway::ssh::SSHClient.Wait").Printf
 	l("will wait for client: %s", c.Host)
 	if c == nil {
@@ -425,7 +474,7 @@ func (c *SSHClient) Wait() error {
 	return c.FetchEnvsWithTar()
 }
 
-func (c *SSHClient) FetchEnvsWithTar() error {
+func (c *RemoteClient) FetchEnvsWithTar() error {
 	l := kemba.New("gw::ssh::SSHClient.FetchEnvsWithTar").Printf
 	l("will get remote envs")
 
@@ -516,7 +565,7 @@ func (c *SSHClient) FetchEnvsWithTar() error {
 // }
 
 // DialThrough will create a new connection from the ssh server sc is connected to. DialThrough is an SSHDialer.
-func (c *SSHClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+func (c *RemoteClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
 	conn, err := c.conn.Dial(net, addr)
 	if err != nil {
 		return nil, err
@@ -530,7 +579,7 @@ func (c *SSHClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ss
 }
 
 // Close closes the underlying SSH connection and session.
-func (c *SSHClient) Close() error {
+func (c *RemoteClient) Close() error {
 	if c.sessOpened {
 		c.sess.Close()
 		c.sessOpened = false
@@ -547,22 +596,22 @@ func (c *SSHClient) Close() error {
 }
 
 // Stdin sets remote stdin
-func (c *SSHClient) Stdin() io.WriteCloser {
+func (c *RemoteClient) Stdin() io.WriteCloser {
 	return c.remoteStdin
 }
 
 // Stderr sets remote stderr
-func (c *SSHClient) Stderr() io.Reader {
+func (c *RemoteClient) Stderr() io.Reader {
 	return c.remoteStderr
 }
 
 // Stdout sets remote stdout
-func (c *SSHClient) Stdout() io.Reader {
+func (c *RemoteClient) Stdout() io.Reader {
 	return c.remoteStdout
 }
 
 // Prefix sets prefix for printing
-func (c *SSHClient) Prefix() (string, int) {
+func (c *RemoteClient) Prefix() (string, int) {
 	l := kemba.New("gateway::ssh::SSHClient.Prefix").Printf
 	hostName := c.Host
 	if strings.Contains(c.Host, ":") {
@@ -574,7 +623,7 @@ func (c *SSHClient) Prefix() (string, int) {
 	return c.Color + host + entity.ResetColor, len(host)
 }
 
-func (c *SSHClient) Write(p []byte) (n int, err error) {
+func (c *RemoteClient) Write(p []byte) (n int, err error) {
 	if c.remoteStdin == nil {
 		return 0, fmt.Errorf("failed write, session is not open")
 	}
@@ -582,7 +631,7 @@ func (c *SSHClient) Write(p []byte) (n int, err error) {
 }
 
 // WriteClose well, writeCloser for client
-func (c *SSHClient) WriteClose() error {
+func (c *RemoteClient) WriteClose() error {
 	if c.remoteStdin == nil {
 		return fmt.Errorf("failed close, session is not open")
 	}
@@ -590,7 +639,7 @@ func (c *SSHClient) WriteClose() error {
 }
 
 // Signal process command signals
-func (c *SSHClient) Signal(sig os.Signal) error {
+func (c *RemoteClient) Signal(sig os.Signal) error {
 	if !c.sessOpened {
 		return fmt.Errorf("session is not open")
 	}
@@ -617,7 +666,7 @@ func (c *SSHClient) Signal(sig os.Signal) error {
 // scp part
 // -----------------------------
 
-func removePortFromHostname(c *SSHClient) {
+func removePortFromHostname(c *RemoteClient) {
 	if c == nil {
 		log.Panic("24A502B0-ADC9-4AFD-86E7-8DDE04E0F732: c is nil")
 	}
@@ -632,7 +681,7 @@ func removePortFromHostname(c *SSHClient) {
 }
 
 // buildRemoteCommand constructs the command string to be run on the remote host.
-func (c *SSHClient) buildRemoteCommand(task entity.Task) string {
+func (c *RemoteClient) buildRemoteCommand(task entity.Task) string {
 	l := kemba.New("SSHClient.build_remote_command").Printf
 
 	command := task.Run

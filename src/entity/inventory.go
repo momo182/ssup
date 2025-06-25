@@ -1,5 +1,10 @@
 package entity
 
+import (
+	"fmt"
+	"os"
+)
+
 type Inventory struct {
 	Bash    bool
 	Sh      bool
@@ -23,21 +28,36 @@ func (i *Inventory) CheckShCommand() []string {
 }
 
 func (i *Inventory) CheckOsTypeCommand() []string {
-	// Darwin
+	// Darwin or Linux
 	return []string{
 		"uname", "-s",
 	}
 }
 
+// CheckHomeCommand returns the command to get the home directory
+// based on the OS type
+//
+// it's expected that it will run AFTER a call to check os type
 func (i *Inventory) CheckHomeCommand() []string {
-	return []string{
-		"pwd",
+	// negative checks
+	// if not set, fail now as we cant get the home dir
+	// if we dont know an OS type
+	if i.OsType == "" {
+		fmt.Println("unable to determine os type, cannot get home")
+		os.Exit(1)
 	}
+
+	// if not Darwin or Linux assume its windows
+	if i.OsType != "Darwin" && i.OsType != "Linux" {
+		return i.GetHomeWinCommand()
+	}
+
+	return i.GetHomeUnixCommand()
 }
 
 func (i *Inventory) CheckUserCommand() []string {
 	return []string{
-		"echo", "$USER",
+		i.GetShell(), "-c", "\"echo $USER\"",
 	}
 }
 
@@ -58,4 +78,16 @@ func (i *Inventory) GetShell() string {
 	}
 
 	return ""
+}
+
+func (i *Inventory) GetHomeUnixCommand() []string {
+	return []string{
+		i.GetShell(), "-c", "\"echo $HOME\"",
+	}
+}
+
+func (i *Inventory) GetHomeWinCommand() []string {
+	return []string{
+		"echo", "%USERPROFILE%",
+	}
 }

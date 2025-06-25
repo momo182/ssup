@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,7 +18,7 @@ import (
 )
 
 // Upload local file to remote server
-func (c *SSHClient) Upload(localPath, remotePath string) error {
+func (c *RemoteClient) Upload(localPath, remotePath string) error {
 	l := kemba.New("gw::sshclient::Upload").Printf
 	l("uploading files with UI feedback")
 
@@ -28,10 +29,28 @@ func (c *SSHClient) Upload(localPath, remotePath string) error {
 		remotePath = strings.Replace(remotePath, "~/", "", 1)
 	}
 
-	fmt.Println("will upload from:", localPath)
-	fmt.Println("will upload to:", remotePath)
+	fmt.Println("+ upload:")
+	fmt.Println("  src:", localPath)
+	fmt.Println("  dst:", remotePath)
 
 	l("getting sftp client")
+	// test if connection is still alive
+	if !isConnected(c.GetConnection()) {
+		currentClient := c.GetConnection()
+		l("connection was dropped, probably by scp, will reconnect")
+		config := c.GetSSHConfig()
+		if config == nil {
+			return errors.New("ssh config is nil")
+		}
+		l("got config")
+		currentClient, err := ssh.Dial("tcp", c.Host, config)
+		if err != nil {
+			return err
+		}
+		l("got client")
+		c.SetConnection(currentClient)
+	}
+
 	client, err := connectSFTP(c.GetConnection())
 	if err != nil {
 		return err
@@ -43,7 +62,7 @@ func (c *SSHClient) Upload(localPath, remotePath string) error {
 }
 
 // GenerateOnRemote basically cats file content to "~/" + entity.TASK_TAIL on remote
-func (c *SSHClient) GenerateOnRemote(data []byte, remotePath string) error {
+func (c *RemoteClient) GenerateOnRemote(data []byte, remotePath string) error {
 	l := kemba.New("gw::sshclient::GenerateOnRemote").Printf
 	var shellcheck entity.ShellCheckFacade
 	shellcheck = &sc.ShellCheckProvider{}
@@ -106,6 +125,11 @@ func connectSFTP(sshClient *ssh.Client) (*sftp.Client, error) {
 
 // doUpload recursively uploads a local directory to the remote SFTP server.
 func doUpload(client *sftp.Client, localPath, remotePath string, silent bool) error {
+	// check if localPath exists at all
+	if _, err := os.Stat(localPath); err != nil {
+		return fmt.Errorf("%s does not exist", localPath)
+	}
+
 	l := kemba.New("gw::sshclient::uploadDir").Printf
 	return filepath.Walk(localPath, func(localFilePath string, info os.FileInfo, err error) error {
 		// spinner init

@@ -37,9 +37,9 @@ type ErrUnsupportedSupfileVersion struct {
 }
 
 func (e ErrMustUpdate) Error() string {
-	return fmt.Sprintf("%v\n\nPlease update sup by `go get -u github.com/pressly/sup/cmd/sup`", e.Msg)
+	return fmt.Sprintf("%v\n\nPlease update sup by `go get -u github.com/momo182/ssup/cmd/ssup`", e.Msg)
 }
 
 func (e ErrUnsupportedSupfileVersion) Error() string {
-	return fmt.Sprintf("%v\n\nCheck your Supfile version (available latest version: v0.5)", e.Msg)
+	return fmt.Sprintf("%v\n\nCheck your Supfile version (available latest version: v0.6)", e.Msg)
 }

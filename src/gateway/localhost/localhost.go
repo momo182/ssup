@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"strings"
 
 	"github.com/clok/kemba"
@@ -124,7 +125,58 @@ func (c *LocalhostClient) Connect(_ entity.NetworkHost) error { // FuncName: Con
 
 	inventory.User = u.Username
 	c.Inventory = inventory
+
+	// do dist copy here
+	err = copyDistFolders(c)
+	if err != nil {
+		return fmt.Errorf("failed to copy dist folders for local client")
+	}
 	return nil
+}
+
+// copyDistFolders this is actually a copy from ssh package
+// but it doesnot have to be, we could skip the copy altogether
+// and just set PATH to include the folder
+func copyDistFolders(c *LocalhostClient) error {
+	l := kemba.New("gw::ssh::SSHClient.copyDistFolders").Printf
+	l("copying dist folder")
+
+	if c == nil {
+		return errors.New("client is nil")
+	}
+
+	if c.Inventory == nil {
+		return errors.New("client inventory is nil")
+	}
+
+	l(dump.Format(c.Inventory))
+
+	// check if dist of ssupdist is present and if so copy it
+	// to remote host ~/.local/ssup/dist
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return errors.New("failed to get current directory")
+	}
+
+	srcPath := filepath.Join(currentDir, "dist")
+
+	_, err = os.Stat(srcPath)
+	if err != nil {
+		l("dist folder not found at %v", srcPath)
+		return nil
+	}
+	l("dist folder found at %v", srcPath)
+
+	sep := "/"
+	if c.Inventory.OsType != "Darwin" && c.Inventory.OsType != "Linux" {
+		sep = "\\"
+	}
+
+	l("sep is: '%v'", sep)
+	destPath := c.Inventory.Home + sep + ".local" + sep + "ssup" + sep + "dist"
+	l("destPath is: '%v'")
+
+	return c.Upload(srcPath, destPath)
 }
 
 // Run starts the given task on localhost, does not wait for it to finish.
@@ -374,14 +426,9 @@ func (c *LocalhostClient) GenerateOnRemote(data []byte, dest string) error {
 
 	// if /System/Library is directory
 	// check if dest contains /home/username and replace it with home from UserHomeDir
-	SysLibHandle, e := os.Stat("/System/Library")
-	if e != nil {
-		return oops.Trace("6B937FB1-90E2-43A9-A152-1D218AF8A352").
-			Hint("failed to check if /System/Library is directory").
-			Wrap(e)
-	}
+	_, e = os.Stat("/System/Library")
 
-	if SysLibHandle.IsDir() {
+	if e == nil {
 		l("/System/Library is dir")
 		dest = strings.Replace(dest, "/home/"+c.user, home, 1)
 	}

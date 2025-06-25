@@ -39,7 +39,7 @@ Extensions to original sup
 
 # Installation
 
-    $ go get -u github.com/pressly/sup/cmd/sup
+    $ go get -u github.com/momo182/ssup/cmd/ssup
 
 # Usage
 
@@ -344,6 +344,60 @@ is equivalent to
 
 `$ sup production build pull migrate-db-up stop-rm-run health slack-notify airbrake-notify`
 
+### Target mapping
+
+now it's possible to map target names to networks.
+This way you can map the whole journey of your code to a single target.
+To illustrate this, here is an example of a Supfile that builds and deploys
+a telegram bot:
+
+```yaml
+---
+version: 0.5
+env:
+  TG_BOT_TOKEN: $(cat secrets/token.txt)
+
+networks:
+  local:
+    hosts:
+    - 127.0.0.1
+  remote:
+    hosts:
+    - user@example.com | $(cat secrets/example_password)
+
+commands:
+  run:
+    desc: run the bot locally
+    local: |
+      cargo run
+
+  build-release:
+    desc: release build for x86_64-unknown-linux-gnu
+    local: |
+      cargo zigbuild --target x86_64-unknown-linux-gnu --release
+      file ~/git/yatgbotrs/target/x86_64-unknown-linux-gnu/release/yatgbotrs
+
+  upload:
+    local: |
+      rsync -avzh ~/git/yatgbotrs/target/x86_64-unknown-linux-gnu/release/yatgbotrs user@example.com:yatgbotrs
+
+  setup:
+    desc: move yatgbotrs to right place on remote
+    run: |
+      rm -rfv ~/yatgbot/yatgbot
+      mv -v ~/yatgbotrs ~/yatgbot/yatgbot
+      sudo systemctl restart yatgbot.service && echo "yatgbot restarted" || echo "yatgbot not restarted"
+
+targets:
+  do_remote:
+  - build-release local
+  - upload local
+  - setup remote
+```
+^^^^ here comes the fun part, notice that **build-release** and **upload**  
+are run locally and **setup** is run remotely.  
+
+
 # Supfile
 
 See [example Supfile](./example/Supfile).
@@ -354,7 +408,7 @@ See [example Supfile](./example/Supfile).
 # Supfile
 ---
 version: 0.4
-
+desc: supfile description goes here...
 # Global environment variables
 env:
   NAME: api
@@ -393,6 +447,33 @@ targets:
 - `$SUP_USER` - User who invoked sup command.
 - `$SUP_TIME` - Date/time of sup command invocation.
 - `$SUP_ENV` - Environment variables provided on sup command invocation. You can pass `$SUP_ENV` to another `sup` or `docker` commands in your Supfile.
+
+
+### Shellcheck support
+
+if you happen to have shellcheck installed on your machine
+ssup will be able to check your shell scripts for errors.
+Shellckeck will run before any connections are done,
+so any errors will halt the execution of your Supfile.
+
+SHELLCHECK WILL NOT RUN IF SET UP SHEBANG FOR YOUR COMMAND  
+more on this below...
+
+### shebang support
+
+it is now possible to use shebang in the first line of your script.
+Due to the nature of how ssup executes commands, it will create a script on the remote machine
+first, and launch that script second, to use the shebang.
+
+### ./dist folder support
+
+if you create a `dist` folder in your project root,
+any binaries created in that folder will be available for user on remote machine.
+contents of the folder are copied on every launch, so if you updated a binary in that folder,
+it will be updated on next launch too.
+
+i tend to use `dist` folder for distributing nushell binaries and later  
+utilizing shebang support by adding shebang `#!/usr/bin/env nu`
 
 ### Namespaces
 
@@ -454,7 +535,7 @@ example supfile to demonstrate namespaces usage:
 ```yaml
 ---
 version: 0.5
-
+desc: example to demonstrate namespaces usage
 networks:
   l:
     hosts:
