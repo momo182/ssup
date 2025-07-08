@@ -107,8 +107,8 @@ func colorCmdUsage(conf *Supfile) {
 	l := kemba.New("entity::colorCmdUsage").Printf
 	if conf.Desc != "" {
 		pterm.Info.Prefix = pterm.Prefix{Text: "Supfile Description:", Style: pterm.NewStyle(pterm.BgCyan, pterm.FgBlack)}
-		pterm.Info.Println(conf.Desc)
-		// fmt.Fprintf(w, "%v", conf.Desc)
+		cleanDesc := strings.TrimSpace(conf.Desc)
+		pterm.Info.Println(cleanDesc)
 	}
 
 	l("printing commands")
@@ -119,7 +119,8 @@ func colorCmdUsage(conf *Supfile) {
 	commands := pterm.TableData{{"Command", "Description"}}
 	for _, name := range conf.Commands.Names {
 		cmd, _ := conf.Commands.Get(name)
-		commands = append(commands, []string{name, cmd.Desc})
+		cleanDesc := strings.TrimSpace(cmd.Desc)
+		commands = append(commands, []string{name, cleanDesc})
 	}
 	pterm.DefaultTable.WithHasHeader(true).WithRowSeparator("-").WithHeaderRowSeparator("-").WithData(commands).Render()
 
@@ -191,13 +192,15 @@ func cmdUsage(conf *Supfile) {
 
 	if conf.Desc != "" {
 		fmt.Fprintln(w, "Description:\t")
-		fmt.Fprintf(w, "%v", conf.Desc)
+		cleanDesc := strings.TrimSpace(conf.Desc)
+		fmt.Fprintf(w, "%v", cleanDesc)
 	}
 
 	fmt.Fprintln(w, "Commands:\t")
 	for _, name := range conf.Commands.Names {
 		cmd, _ := conf.Commands.Get(name)
-		fmt.Fprintf(w, "- %v\t%v\n", name, cmd.Desc)
+		cleanDesc := strings.TrimSpace(cmd.Desc)
+		fmt.Fprintf(w, "- %v\t%v\n", name, cleanDesc)
 	}
 	fmt.Fprintln(w, "\t")
 

@@ -215,20 +215,20 @@ func (c *RemoteClient) Connect(host entity.NetworkHost) error {
 	authMethods = lobby.SetupAuthMethods(authMethods, host)
 
 	l("creating config")
-	l(dump.Format(host, authMethods))
+	// l(dump.Format(host, authMethods))
 	config := ssh.ClientConfig{
 		User:            c.User,
 		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	l(dump.Format(config))
+	// l(dump.Format(config))
 
 	l("creating connect order")
 	connectOrder := entity.ConnectOrder{
 		Host:         host.Host,
 		ClientConfig: &config,
 	}
-	l(dump.Format(connectOrder))
+	// l(dump.Format(connectOrder))
 
 	c.ConnectOrder = connectOrder
 
