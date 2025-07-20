@@ -55,7 +55,7 @@ func (c *RemoteClient) Upload(localPath, remotePath string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	// defer client.Close()
 
 	// Recursively upload the directory.
 	return doUpload(client, localPath, remotePath, false)
@@ -105,7 +105,7 @@ func (c *RemoteClient) GenerateOnRemote(data []byte, remotePath string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	// defer client.Close()
 
 	// Recursively upload the directory.
 	return doUpload(client, localPath.Name(), remotePath, true)

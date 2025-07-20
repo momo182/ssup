@@ -35,7 +35,7 @@ func (c *RemoteClient) Download(remotePath, localPath string, silent bool) error
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	// defer client.Close()
 
 	// Recursively download the directory.
 	return downloadDir(client, remotePath, localPath)

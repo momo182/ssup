@@ -318,7 +318,7 @@ func (c *RemoteClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) 
 	// add namespace for the host
 	l("adding namespace for host: %v", c.Host)
 	svc.ServiceRegistry.Namespaces.Add(c.Host)
-
+	l("done adding namespace for host: %v", c.Host)
 	return nil
 }
 
@@ -491,7 +491,7 @@ func (c *RemoteClient) FetchEnvsWithTar() error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	// defer client.Close()
 
 	_, err = client.Stat(remoteFilePath)
 	if err != nil {

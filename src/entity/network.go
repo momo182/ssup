@@ -33,12 +33,12 @@ func (n Network) ParseInventory() ([]NetworkHost, error) {
 		return nil, nil
 	}
 
-	cmdParts := []string{"/bin/sh", "-c", n.Inventory}
-	l("%v", cmdParts)
-	cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
+	l("forming command")
+	cmd := exec.Command("/bin/sh", "-c", n.Inventory)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, n.Env.Slice()...)
 	cmd.Stderr = os.Stderr
+	l("command: %s", cmd.String())
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err

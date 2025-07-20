@@ -29,18 +29,21 @@ func specialTargetMode(initData entity.InitState, helpMenu entity.HelpDisplayer)
 		}
 		// having names of all commands, grab all parts associated with those
 		for _, commandName := range commands {
+			l("commandName: %v", commandName)
 			affix, ok := conf.Targets.GetAffixByCommandName(commandName)
 			if !ok {
 				fmt.Printf("ERR: C2E4EA9A-427E-47A5-A159-9E2DEA947903, failed to get affix from command")
 				os.Exit(41)
 			}
+			l("affix: %s", dump.Format(affix))
 			netName := affix.AffixedNetwork
-			l("affixedName: %v", affix)
+			l("affixedName: %v", netName)
 			ensureNetworkExists(netName, conf, helpMenu)
 			affixedNet, err := conf.GetNetworkByName(netName)
 			if err != nil {
 				return nil, err
 			}
+			l("affixedNet:\n%s", dump.Format(affixedNet))
 
 			// this should be common
 			l("parse CLI --env flag env vars, override values defined in Network env")
@@ -52,8 +55,8 @@ func specialTargetMode(initData entity.InitState, helpMenu entity.HelpDisplayer)
 			if !ok {
 				fmt.Printf("ERR: C2E4EA9A-427E-47A5-A159-9E2DEA947903, failed to get command")
 			}
-			l("command: %v", command)
-			l("network: %v", affixedNet)
+			l("command:\n%v", command)
+			l("network:\n%v", affixedNet)
 			play := entity.Play{}
 			play.Commands = append(play.Commands, &command)
 			play.Network = affixedNet

@@ -56,12 +56,12 @@ func (t *Targets) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			l("part: %s", part)
 			parts := strings.Split(part.(string), " ")
 			if len(parts) == 2 {
-				// command := parts[0]
-				// network := parts[1]
+				command := parts[0]
+				network := parts[1]
 				mapping := AffixMappig{
 					TargetName:     item.Key.(string),
-					AffixedNetwork: parts[1],
-					CommandName:    parts[0],
+					AffixedNetwork: network,
+					CommandName:    command,
 				}
 				t.Names[i] = item.Key.(string)
 				t.affixes[parts[0]] = mapping
@@ -89,7 +89,9 @@ func (t *Targets) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 func (t *Targets) Get(name string) ([]string, bool) {
+	l := kemba.New("entity::targets::Get").Printf
 	cmds, ok := t.targets[name]
+	l("%s", dump.Format(cmds))
 	return cmds, ok
 }
 
@@ -99,7 +101,9 @@ func (t *Targets) Has(name string) bool {
 }
 
 func (t *Targets) GetAffixByCommandName(name string) (AffixMappig, bool) {
+	l := kemba.New("entity::targets::GetAffixByCommandName").Printf
 	affix, ok := t.affixes[name]
+	l(dump.Format(affix))
 	return affix, ok
 }
 

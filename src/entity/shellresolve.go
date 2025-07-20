@@ -15,7 +15,7 @@ import (
 )
 
 func ResolveShell(value string) (string, error) {
-	l := kemba.New("shellresolve").Printf
+	l := kemba.New("entity::ResolveShell").Printf
 	// remove the prefix
 	value = value[2:] // remove the `$(`
 	// remove the suffix
@@ -45,7 +45,7 @@ func ResolveShell(value string) (string, error) {
 			Wrap(e)
 	}
 
-	l("cmd dump:\n%s\nvalue: %s", dump.Format(cmd), clean)
+	l("cmd dump:\n%s\nvalue: %s", dump.Format(cmd.Args), clean)
 	return clean, nil
 }
 

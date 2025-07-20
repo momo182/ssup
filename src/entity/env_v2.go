@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/clok/kemba"
+	"github.com/gookit/goutil/dump"
 	"gopkg.in/yaml.v2"
 )
 
@@ -41,8 +42,13 @@ func (e EnvList) Keys() []string {
 }
 
 func (e EnvList) Slice() []string {
+	l := kemba.New("env::slice").Printf
 	count := len(e.store)
+	l(dump.Format(e.store))
+	l("env list length: %v", count)
+
 	envs := make([]string, count)
+	count = count - 1
 	for key, value := range e.store {
 		envVar := EnvVar{
 			Key:   key,
