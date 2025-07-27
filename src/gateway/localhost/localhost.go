@@ -37,6 +37,10 @@ type LocalhostClient struct {
 	encryption        string
 }
 
+func (c *LocalhostClient) String() string {
+	return fmt.Sprintf("local connection: %s, tube: %s", c.Host, c.tube)
+}
+
 // GetHost returns the host of the LocalhostClient.
 func (c *LocalhostClient) GetHost() string {
 	return c.Host

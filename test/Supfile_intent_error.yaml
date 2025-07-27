@@ -1,0 +1,27 @@
+---
+version: 0.5
+desc: |
+  intent of this file is to test for continue after error
+commands:
+  ok_test1:
+    desc: this will end good
+    local: |
+      echo OK
+      exit 0
+
+  fail_2:
+    desc: release build for x86_64-unknown-linux-gnu
+    local: |
+      echo fail here
+      exit 1
+
+  ok_3:
+    local: |
+      echo will be ignored
+
+
+targets:
+  all:
+  - ok_test1
+  - fail_2
+  - ok_3

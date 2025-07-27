@@ -74,6 +74,10 @@ func (e ErrInv) Error() string {
 	return fmt.Sprintf(`Connect("%v@%v"): %v`, e.User, e.Host, e.Reason)
 }
 
+func (c *RemoteClient) String() string {
+	return fmt.Sprintf("RemoteClient{Host: %v, Tube: %v}", c.Host, c.tube)
+}
+
 // GetHost returns the host of the SSHClient.
 func (c *RemoteClient) GetHost() string {
 	return c.Host

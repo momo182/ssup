@@ -30,6 +30,7 @@ type ClientFacade interface {
 	SetTube(name string)
 	GetInventory() *Inventory
 	GetShell() string
+	String() string
 }
 
 type ArgParserFacade interface {

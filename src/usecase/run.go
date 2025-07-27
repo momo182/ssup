@@ -1,12 +1,14 @@
 package usecase
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/clok/kemba"
 	"github.com/dsnet/try"
@@ -40,6 +42,8 @@ func NewStackup(conf *entity.Supfile) *Stackup {
 //	to multiple smaller methods.
 func (sup *Stackup) Run(isMakefileMode bool, network *entity.Network, envVars entity.EnvList, commands ...*entity.Command) error {
 	l := kemba.New("uc::Stackup::Run").Printf
+	ctx, cancel := context.WithCancel(context.Background()) // Создать контекст
+	defer cancel()                                          // На всякий случай, если не отменим явно
 
 	if len(commands) == 0 {
 		return sup.wrapError("1DF987CA-1E81-4C48-9163-DDAEA0C0CDF7", "no commands to be run", errors.New("no commands provided"))
@@ -67,7 +71,7 @@ func (sup *Stackup) Run(isMakefileMode bool, network *entity.Network, envVars en
 		}
 
 		for _, task := range tasks {
-			if err := sup.runTask(task, cmd, maxLen, isMakefileMode); err != nil {
+			if err := sup.runTask(ctx, cancel, task, cmd, maxLen, isMakefileMode); err != nil {
 				return err
 			}
 		}
@@ -130,24 +134,49 @@ func (sup *Stackup) connectToHostsHelper(network *entity.Network, bastion entity
 }
 
 // Helper function to run a task.
-func (sup *Stackup) runTask(task *entity.Task, cmd *entity.Command, maxLen int, isMakefileMode bool) error {
+func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task *entity.Task, cmd *entity.Command, maxLen int, isMakefileMode bool) error {
 	l := kemba.New("uc::Stackup::runTask").Printf
-	l("task:\n%s", dump.Format(task))
-	l("clients:\n%s", dump.Format(task.Clients))
+	l("task:\n%v", task)
+	l("clients:\n%v", task.Clients)
+
+	// Канал для сбора первой ошибки
+	errChan := make(chan error, len(task.Clients))
 	var wg sync.WaitGroup
 
 	if len(task.Clients) == 0 {
 		return fmt.Errorf("no clients to run task on")
 	}
 
+	// Флаг для отслеживания, была ли ошибка и отмена уже инициирована
+	var canceled int32 // 0 = false, 1 = true
+
+	setCanceled := func() {
+		if atomic.CompareAndSwapInt32(&canceled, 0, 1) {
+			l("Canceling context due to error")
+			cancel() // Отменяем контекст при первой ошибке
+		}
+	}
+
 	for _, c := range task.Clients {
 		l("client: %s", c.GetHost())
 		prefix := sup.getPrefix(c, maxLen, isMakefileMode)
 
+		// Проверка контекста перед началом работы с клиентом
+		select {
+		case <-ctx.Done():
+			// Контекст уже отменен, пропускаем клиента
+			l("Context canceled before starting work on client %s", c.GetHost())
+			continue // Или return ctx.Err() если нужно остановить весь runTask сразу
+		default:
+		}
+
 		// Handle uploads if any.
-		l("handling uploads")
+		l("handling uploads for %s", c.GetHost())
 		if err := sup.handleUploads(c, cmd.Upload, l); err != nil {
-			return err
+			setCanceled() // Отменяем при ошибке загрузки
+			errChan <- errors.Wrap(err, prefix+"upload failed")
+			// Не возвращаем сразу, даем возможность запустить другие клиенты или дождаться уже запущенных
+			continue // Или break если нужно остановить обработку других клиентов в этом runTask
 		}
 
 		// Run the task on the client.

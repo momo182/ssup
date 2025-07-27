@@ -105,7 +105,7 @@ func runLocalCommand(command []string) ([]byte, error) {
 
 	// now process the usual case
 	cmd := exec.Command(command[0], command[1:]...)
-	l(dump.Format(cmd))
+	l(dump.Format(cmd.Args))
 	output, err := cmd.Output()
 	if err != nil {
 		l("got error running command: %v", err)
