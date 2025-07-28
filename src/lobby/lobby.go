@@ -184,7 +184,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 				"&& echo \"\" && source {env_file} "+
 				// ^^^^^^ this needs to exist to make sudo prompt go to next line
 				"&& chmod +x {main_script} && {main_script}"+
-				"; rm -rf {home_folder}/{removal_mask}\"",
+				"|| export SSUP_TASK_FAIL=$?; rm -rf {home_folder}/{removal_mask}; if [ -n \"$SSUP_TASK_FAIL\" ];then exit $SSUP_TASK_FAIL;fi\"",
 			data)
 		l("generating remote password file, w pass: %s", sudoPassword)
 		generateBaselineStartSet()
@@ -196,7 +196,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 
 	default:
 		l("wrapping command into normal block:")
-		command = sf.FormatComplex("{shell} -c 'export PATH=\"{home_folder}/.local/ssup/dist:$PATH\" && source {env_file} && chmod +x {main_script} && {main_script}; rm -rf {home_folder}/{removal_mask}'", data)
+		command = sf.FormatComplex("{shell} -c 'export PATH=\"{home_folder}/.local/ssup/dist:$PATH\" && source {env_file} && chmod +x {main_script} && {main_script} || export SSUP_TASK_FAIL=$?; rm -rf {home_folder}/{removal_mask}; if [ -n \"$SSUP_TASK_FAIL\" ];then exit $SSUP_TASK_FAIL;fi'", data)
 		generateBaselineStartSet()
 	}
 
