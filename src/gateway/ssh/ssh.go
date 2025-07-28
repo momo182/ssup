@@ -21,6 +21,7 @@ import (
 	svc "github.com/momo182/ssup/src/lobby"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // RemoteClient is a wrapper over the SSH connection/sessions.
@@ -390,8 +391,14 @@ func (c *RemoteClient) Run(task *entity.Task) error {
 			ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
 			ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
 		}
+		// get current terminal size
+		width, height, err := terminal.GetSize(int(os.Stdin.Fd()))
+		if err != nil {
+			return entity.ErrTask{Task: task, Reason: fmt.Sprintf("failed to get terminal size: %s", err)}
+		}
+
 		// Request pseudo terminal
-		if err := sess.RequestPty("xterm", 80, 40, modes); err != nil {
+		if err := sess.RequestPty("xterm", width, height, modes); err != nil {
 			return entity.ErrTask{Task: task, Reason: fmt.Sprintf("request for pseudo terminal failed: %s", err)}
 		}
 		l("tty requested")
