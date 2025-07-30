@@ -18,9 +18,9 @@ func (c *RemoteClient) Download(remotePath, localPath string, silent bool) error
 	l("will download %s to local:%s", remotePath, localPath)
 
 	// Handle ~ for local paths
-	if strings.HasPrefix(localPath, "~/") {
-		homeDir, _ := os.UserHomeDir()
-		localPath = filepath.Join(homeDir, localPath[2:])
+	if strings.HasPrefix(remotePath, "~/") {
+		homeDir := c.GetInventory().Home
+		remotePath = filepath.Join(homeDir, remotePath[2:])
 	}
 
 	l("Will download from:", remotePath)
