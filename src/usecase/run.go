@@ -172,7 +172,7 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 
 		// Handle uploads if any.
 		l("handling uploads for %s", c.GetHost())
-		if err := sup.handleUploads(c, cmd.Upload, l); err != nil {
+		if err := sup.handleUploads(c, cmd.Upload); err != nil {
 			setCanceled() // Отменяем при ошибке загрузки
 			errChan <- errors.Wrap(err, prefix+"upload failed")
 			// Не возвращаем сразу, даем возможность запустить другие клиенты или дождаться уже запущенных
@@ -204,16 +204,55 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 	wg.Wait()
 
 	// Wait for all clients to finish the task.
-	return sup.waitForClients(task.Clients, maxLen, isMakefileMode)
+	if err := sup.waitForClients(task.Clients, maxLen, isMakefileMode); err != nil {
+		return errors.Wrap(err, "task failed")
+	}
+
+	for _, c := range task.Clients {
+		l("client downloads check: %s", c.GetHost())
+		prefix := sup.getPrefix(c, maxLen, isMakefileMode)
+
+		// Проверка контекста перед началом работы с клиентом
+		select {
+		case <-ctx.Done():
+			// Контекст уже отменен, пропускаем клиента
+			l("Context canceled before starting work on client %s", c.GetHost())
+			continue // Или return ctx.Err() если нужно остановить весь runTask сразу
+		default:
+		}
+
+		// Handle uploads if any.
+		l("handling fetch for %s", c.GetHost())
+		if err := sup.handleDownloads(c, cmd.Fetch); err != nil {
+			setCanceled() // Отменяем при ошибке загрузки
+			errChan <- errors.Wrap(err, prefix+"upload failed")
+			// Не возвращаем сразу, даем возможность запустить другие клиенты или дождаться уже запущенных
+			continue // Или break если нужно остановить обработку других клиентов в этом runTask
+		}
+	}
+
+	return nil
 }
 
 // Helper function to handle uploads.
-func (sup *Stackup) handleUploads(client entity.ClientFacade, uploads []*entity.Upload, logger func(string, ...interface{})) error {
+func (sup *Stackup) handleUploads(client entity.ClientFacade, uploads []*entity.UploadOrder) error {
 	l := kemba.New("uc::Stackup::handleUploads").Printf
 	for _, upload := range uploads {
 		l("upload command: %v", upload.Src)
 		if err := client.Upload(upload.Src, upload.Dst); err != nil {
 			return sup.wrapError("28D38F66-3258-4578-A275-7D70F3765C0A", "running upload command failed", err)
+		}
+	}
+	return nil
+}
+
+// Helper function to handle downloads.
+func (sup *Stackup) handleDownloads(client entity.ClientFacade, downloads []*entity.DownloadOrder) error {
+	l := kemba.New("uc::Stackup::handleDownloads").Printf
+	for _, download := range downloads {
+		l("download command: %v", download.Src)
+		if err := client.Download(download.Src, download.Dst, false); err != nil {
+			return sup.wrapError("606ED9CC-9930-42FD-9189-927278EFFD7A", "running download command failed", err)
 		}
 	}
 	return nil

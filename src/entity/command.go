@@ -11,20 +11,19 @@ import (
 
 // Command represents command(s) to be run remotely.
 type Command struct {
-	Name   string    `yaml:"-"`      // Command name.
-	Desc   string    `yaml:"desc"`   // Command description.
-	Local  string    `yaml:"local"`  // Command(s) to be run locally.
-	Run    string    `yaml:"run"`    // Command(s) to be run remotelly.
-	Script string    `yaml:"script"` // Load command(s) from script and run it remotelly.
-	Upload []*Upload `yaml:"upload"` // See Upload struct.
-	// Copy     *CopyOrder  `yaml:"copy"`   // See Upload struct.
-	Stdin    bool        `yaml:"stdin"`  // Attach localhost STDOUT to remote commands' STDIN?
-	Once     bool        `yaml:"once"`   // The command should be run "once" (on one host only).
-	Serial   int         `yaml:"serial"` // Max number of clients processing a task in parallel.
-	Fetch    *FetchOrder `yaml:"fetch" ` // See Fetch struct.
-	Sudo     bool        `yaml:"sudo" `  // Run command(s) as root?
-	SudoPass string      `yaml:"sudo_pass"`
-	Env      EnvList     `yaml:"env"`
+	Name     string           `yaml:"-"`      // Command name.
+	Desc     string           `yaml:"desc"`   // Command description.
+	Local    string           `yaml:"local"`  // Command(s) to be run locally.
+	Run      string           `yaml:"run"`    // Command(s) to be run remotelly.
+	Script   string           `yaml:"script"` // Load command(s) from script and run it remotelly.
+	Upload   []*UploadOrder   `yaml:"upload"` // See Upload struct.
+	Stdin    bool             `yaml:"stdin"`  // Attach localhost STDOUT to remote commands' STDIN?
+	Once     bool             `yaml:"once"`   // The command should be run "once" (on one host only).
+	Serial   int              `yaml:"serial"` // Max number of clients processing a task in parallel.
+	Fetch    []*DownloadOrder `yaml:"fetch" ` // See Fetch struct.
+	Sudo     bool             `yaml:"sudo" `  // Run command(s) as root?
+	SudoPass string           `yaml:"sudo_pass"`
+	Env      EnvList          `yaml:"env"`
 
 	// API backward compatibility. Will be deprecated in v1.0.
 	RunOnce bool `yaml:"run_once"` // The command should be run once only.
