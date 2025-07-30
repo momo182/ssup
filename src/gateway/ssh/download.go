@@ -58,7 +58,7 @@ func downloadDir(client *sftp.Client, remotePath, localPath string) error {
 		}
 		localFilePath := filepath.Join(localPath, relPath)
 
-		spinner, _ := pterm.DefaultSpinner.Start("Downloading: " + remoteFilePath)
+		spinner, _ := pterm.DefaultSpinner.Start("Processing: " + remoteFilePath)
 
 		if walker.Stat().IsDir() {
 			if err := os.MkdirAll(localFilePath, os.ModePerm); err != nil {
@@ -70,6 +70,16 @@ func downloadDir(client *sftp.Client, remotePath, localPath string) error {
 			if filepath.Base(remoteFilePath) == ".DS_Store" {
 				spinner.Info("Skipped: " + remoteFilePath)
 				continue
+			}
+
+			remoteFileSize := walker.Stat().Size()
+
+			// Check if local file exists and compare size
+			if localInfo, err := os.Stat(localFilePath); err == nil {
+				if localInfo.Size() == remoteFileSize {
+					spinner.Success("Already up-to-date (same size): " + localFilePath)
+					continue
+				}
 			}
 
 			// Open remote file

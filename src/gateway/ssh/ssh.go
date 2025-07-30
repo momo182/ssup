@@ -535,46 +535,6 @@ func (c *RemoteClient) FetchEnvsWithTar() error {
 	return nil
 }
 
-// func (c *SSHClient) FetchEnvsWithTar(config string, remoteName string) error {
-// 	l := kemba.New("gw::ssh::SSHClient.FetchEnvsWithTar").Printf
-// 	client := c.conn
-// 	localPath, err := fsutil.TempDir("", "SSUP_TEMP_*.tmp")
-
-// 	scpClient, err := scp.NewClientFromExistingSSH(client, &scp.ClientOption{})
-// 	if err != nil {
-// 		return oops.Trace("AE37AA9B-8E0A-49FB-91C6-D05C63C0637D").
-// 			Hint("failed to create scp client").
-// 			Wrap(err)
-
-// 	}
-// 	defer scpClient.Close()
-
-// 	ctx := context.Background()
-// 	fo := &scp.FileTransferOption{
-// 		Context:      ctx,
-// 		Timeout:      30 * time.Second,
-// 		PreserveProp: true,
-// 	}
-
-// 	err = scpClient.CopyFileFromRemote(entity.VARS_FILE, localPath, fo)
-
-// 	data, e := os.ReadFile(filepath.Join(localPath, entity.VARS_FILE))
-// 	if e != nil {
-// 		return oops.Trace("FB7B1D24-227C-44D1-8C55-5BCC57D41C73").
-// 			Hint("failed to read file").
-// 			With("localPath", localPath).
-// 			Wrap(e)
-// 	}
-// 	externalEnvs := string(data)
-// 	l("output:\n%s", externalEnvs)
-
-// 	svc.Lobby.Namespaces.SetFromEnvString(string(externalEnvs), c.Host)
-// 	debugData := svc.Lobby.Namespaces.Get(c.Host)
-// 	l("data:\n%s", dump.Format(debugData))
-
-// 	return nil
-// }
-
 // DialThrough will create a new connection from the ssh server sc is connected to. DialThrough is an SSHDialer.
 func (c *RemoteClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
 	conn, err := c.conn.Dial(net, addr)
@@ -586,7 +546,6 @@ func (c *RemoteClient) DialThrough(net, addr string, config *ssh.ClientConfig) (
 		return nil, err
 	}
 	return ssh.NewClient(cl, chans, reqs), nil
-
 }
 
 // Close closes the underlying SSH connection and session.

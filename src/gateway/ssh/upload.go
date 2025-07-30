@@ -146,20 +146,16 @@ func doUpload(client *sftp.Client, localPath, remotePath string, silent bool) er
 
 		if !silent {
 			spinner1, err = pterm.DefaultSpinner.WithWriter(multi.NewWriter()).Start("uploading: " + remoteFilePath)
+			if err != nil {
+				return err
+			}
 		}
 
-		if err != nil {
-			return err
-		}
 		multi.Start()
 		defer multi.Stop()
 
 		if info.IsDir() {
 			l("inspecting if localPath is a directory")
-			if err != nil {
-				return err
-			}
-
 			if err := client.MkdirAll(remoteFilePath); err != nil {
 				return fmt.Errorf("failed to create remote directory %s: %v", remoteFilePath, err)
 			}
@@ -167,7 +163,6 @@ func doUpload(client *sftp.Client, localPath, remotePath string, silent bool) er
 			if !silent {
 				spinner1.Success(fmt.Sprintf("%s", remoteFilePath))
 			}
-
 		} else {
 			l("inspecting if localPath is not a directory")
 			// if basename == ".DS_Store" skip
@@ -186,6 +181,24 @@ func doUpload(client *sftp.Client, localPath, remotePath string, silent bool) er
 			if statErr != nil {
 				l("remote directory does not exist, creating it")
 				client.MkdirAll(baseDir)
+			}
+
+			// Get local file size
+			localStat, err := os.Stat(localFilePath)
+			if err != nil {
+				return fmt.Errorf("failed to stat local file %s: %v", localFilePath, err)
+			}
+			localSize := localStat.Size()
+
+			// Check remote file size
+			remoteStat, err := client.Stat(remoteFilePath)
+			if err == nil { // remote file exists
+				if remoteStat.Size() == localSize {
+					if !silent {
+						spinner1.Info(fmt.Sprintf("skipped (same size): %s", remoteFilePath))
+					}
+					return nil
+				}
 			}
 
 			// Open local file.
