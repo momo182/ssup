@@ -375,87 +375,88 @@ func (sup *Stackup) getPrefix(client entity.ClientFacade, maxLen int, isMakefile
 func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([]entity.ClientFacade, []string) {
 	l := kemba.New("usecase::run::connectToHosts").Printf
 	l("will range over hosts: %v", len(network.Hosts))
-	result := []entity.ClientFacade{}
-	errors := make([]string, 0)
 
-	// if len(network.Hosts) == 0 && network.Inventory != "" {
-	// 	parsedHosts, err := network.ParseInventory()
-	// 	if err != nil {
-	// 		fmt.Println("inventory parsing failed: %v", err)
-	// 		os.Exit(2)
-	// 	}
-	// 	network.Hosts = parsedHosts
-	// }
-
-	for i, host := range network.Hosts {
-		// localhost client
-		if host.Host == "localhost" || host.Host == "127.0.0.1" {
-			l("found localhost")
-			envStore := new(entity.EnvList)
-			envStore.Set("SUP_HOST", host.Host)
-			local := &clientLocal.LocalhostClient{
-				Env: envStore,
-			}
-
-			if host.Tube != "" {
-				l("will inject tube: %s", host.Tube)
-				local.SetTube(host.Tube)
-			}
-
-			l("about to connect to localhost")
-			if err := local.Connect(host); err != nil {
-				fmt.Println(err, "connecting to localhost failed?!?!?")
-				errors = append(errors, host.Host)
-			}
-			result = append(result, local)
-			continue
-		}
-		l("found remote host: %s", host.Host)
-
-		// SSH client
-		l("password check for host")
-		pass := host.Password
-		if pass == "" && network.Password != "" {
-			pass = network.Password
-		}
-
-		l("filling in user,env and creds")
-		envStore := new(entity.EnvList)
-		envStore.Set("SUP_HOST", host.Host)
-		remote := &clientSSH.RemoteClient{
-			Env:      envStore,
-			User:     network.User,
-			Color:    entity.Colors[i%len(entity.Colors)],
-			Password: pass,
-		}
-
-		if host.Tube != "" {
-			l("will inject tube: %s", host.Tube)
-			remote.SetTube(host.Tube)
-		}
-
-		l("about to connect to remote host")
-
-		if bastion != nil {
-			l("bastion is set, trying it now")
-			if err := remote.ConnectWith(host, bastion.DialThrough); err != nil {
-				fmt.Println(err, "connecting to remote host through bastion failed")
-				errors = append(errors, host.Host)
-			}
-		} else {
-			l("connecting via direct connection")
-			if err := remote.Connect(host); err != nil {
-				fmt.Println(err, "connecting to remote host failed")
-				errors = append(errors, host.Host)
-			}
-			l("connected")
-		}
-		// append to result
-		result = append(result, remote)
+	type result struct {
+		client entity.ClientFacade
+		err    error
+		host   string
 	}
 
-	l("connected to all hosts:\n%s", dump.Format(result))
-	return result, errors
+	results := make(chan result, len(network.Hosts))
+
+	// Запускаем горутины для подключения
+	for i := range network.Hosts {
+		go func(host entity.NetworkHost) {
+			var client entity.ClientFacade
+			var err error
+
+			if host.Host == "localhost" || host.Host == "127.0.0.1" {
+				l("found localhost")
+				envStore := new(entity.EnvList)
+				envStore.Set("SUP_HOST", host.Host)
+				local := &clientLocal.LocalhostClient{
+					Env: envStore,
+				}
+
+				if host.Tube != "" {
+					l("will inject tube: %s", host.Tube)
+					local.SetTube(host.Tube)
+				}
+
+				err = local.Connect(host)
+				client = local
+			} else {
+				l("found remote host: %s", host.Host)
+
+				pass := host.Password
+				if pass == "" && network.Password != "" {
+					pass = network.Password
+				}
+
+				envStore := new(entity.EnvList)
+				envStore.Set("SUP_HOST", host.Host)
+				remote := &clientSSH.RemoteClient{
+					Env:      envStore,
+					User:     network.User,
+					Color:    entity.Colors[i%len(entity.Colors)],
+					Password: pass,
+				}
+
+				if host.Tube != "" {
+					l("will inject tube: %s", host.Tube)
+					remote.SetTube(host.Tube)
+				}
+
+				if bastion != nil {
+					l("bastion is set, trying it now")
+					err = remote.ConnectWith(host, bastion.DialThrough)
+				} else {
+					l("connecting via direct connection")
+					err = remote.Connect(host)
+				}
+				client = remote
+			}
+
+			results <- result{client: client, err: err, host: host.Host}
+		}(network.Hosts[i])
+	}
+
+	// Собираем результаты
+	clients := []entity.ClientFacade{}
+	errors := []string{}
+
+	for i := 0; i < len(network.Hosts); i++ {
+		res := <-results
+		if res.err != nil {
+			l("failed to connect to %s: %v", res.host, res.err)
+			errors = append(errors, res.host)
+		} else {
+			clients = append(clients, res.client)
+		}
+	}
+
+	l("connected to all hosts:\n%s", dump.Format(clients))
+	return clients, errors
 }
 
 func (*Stackup) connectToBastionHost(network *entity.Network) (*clientSSH.RemoteClient, error) {
