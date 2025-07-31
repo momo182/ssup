@@ -253,6 +253,16 @@ func copyDistFolders(c *RemoteClient) error {
 		return errors.New("client inventory is nil")
 	}
 
+	// list all files in ./dist folder in current directory
+	files, err := FindAllPaths("./dist")
+	if err != nil {
+		return errors.New("failed to list files in dist folder")
+	}
+
+	if len(files) == 0 {
+		return nil
+	}
+
 	l(dump.Format(c.Inventory))
 
 	// check if dist of ssupdist is present and if so copy it
@@ -667,4 +677,26 @@ func (c *RemoteClient) buildRemoteCommand(task entity.Task) string {
 
 	l("done building command")
 	return command
+}
+
+// FindAllPaths находит все файлы и папки в указанной директории
+// и возвращает их пути в виде среза строк
+func FindAllPaths(rootPath string) ([]string, error) {
+	var paths []string
+
+	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !strings.Contains(path, ".DS_Store") {
+			paths = append(paths, path)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return paths, nil
 }
