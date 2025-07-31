@@ -160,8 +160,6 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 		return fmt.Errorf("no clients to run task on")
 	}
 
-	// Канал для сбора первой ошибки
-	errChan := make(chan error, totalClients)
 	var wg sync.WaitGroup
 
 	// Флаг для отслеживания, была ли ошибка и отмена уже инициирована
@@ -191,7 +189,6 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 		l("handling uploads for %s", c.GetHost())
 		if err := sup.handleUploads(c, cmd.Upload); err != nil {
 			setCanceled() // Отменяем при ошибке загрузки
-			errChan <- errors.Wrap(err, prefix+"upload failed")
 			// Не возвращаем сразу, даем возможность запустить другие клиенты или дождаться уже запущенных
 			continue // Или break если нужно остановить обработку других клиентов в этом runTask
 		}
@@ -227,7 +224,6 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 
 	for _, c := range task.Clients {
 		l("client downloads check: %s", c.GetHost())
-		prefix := sup.getPrefix(c, maxLen, isMakefileMode)
 
 		// Проверка контекста перед началом работы с клиентом
 		select {
@@ -249,7 +245,6 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 		l("handling fetch for %s", c.GetHost())
 		if err := sup.handleDownloads(c, cmd.Fetch); err != nil {
 			setCanceled() // Отменяем при ошибке загрузки
-			errChan <- errors.Wrap(err, prefix+"fetch failed")
 			// Не возвращаем сразу, даем возможность запустить другие клиенты или дождаться уже запущенных
 			continue // Или break если нужно остановить обработку других клиентов в этом runTask
 		}

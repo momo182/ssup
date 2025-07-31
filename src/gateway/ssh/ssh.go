@@ -526,7 +526,7 @@ func (c *RemoteClient) FetchEnvsWithTar() error {
 	// Open remote file
 	localPath, err := fsutil.TempFile("", "SSUP_TEMP_*.tmp")
 	defer fsutil.DeleteIfFileExist(localPath.Name())
-	c.Download(remoteFilePath, localPath.Name(), false)
+	c.Download(remoteFilePath, localPath.Name(), false, true)
 	remoteVars := fsutil.ReadAll(localPath)
 
 	l("dump: 21D2239C-7DCD-4044-B30C-FFB5254EB0C2")
