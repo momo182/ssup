@@ -31,12 +31,12 @@ func normalMode(initData entity.InitState, helpMenu entity.HelpDisplayer) (*enti
 	l("parse CLI --env flag env vars, override values defined in Network env")
 	overrideEnvFromArgs(envFromArgs, network)
 
-	l("check if we have an inventory via script execution")
-	hosts, err := network.ParseInventory()
-	if err != nil {
-		return nil, err
-	}
-	network.Hosts = append(network.Hosts, hosts...)
+	// l("check if we have an inventory via script execution")
+	// hosts, err := network.ParseInventory()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// network.Hosts = append(network.Hosts, hosts...)
 
 	addSSUPDefaultEnvs(network, initData.InitialArgs.CommandArgs)
 

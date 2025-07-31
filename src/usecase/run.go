@@ -361,14 +361,14 @@ func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([
 	l("will range over hosts: %v", len(network.Hosts))
 	result := []entity.ClientFacade{}
 
-	if len(network.Hosts) == 0 && network.Inventory != "" {
-		parsedHosts, err := network.ParseInventory()
-		if err != nil {
-			fmt.Println("inventory parsing failed: %v", err)
-			os.Exit(2)
-		}
-		network.Hosts = parsedHosts
-	}
+	// if len(network.Hosts) == 0 && network.Inventory != "" {
+	// 	parsedHosts, err := network.ParseInventory()
+	// 	if err != nil {
+	// 		fmt.Println("inventory parsing failed: %v", err)
+	// 		os.Exit(2)
+	// 	}
+	// 	network.Hosts = parsedHosts
+	// }
 
 	for i, host := range network.Hosts {
 		// localhost client

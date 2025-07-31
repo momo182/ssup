@@ -71,6 +71,12 @@ func main() {
 	}
 	l("reading supfile")
 	conf := appinit.ReadSupfile(initialArgs)
+	if err := unpackInventories(conf); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	l("4685D4CC-E39C-49E7-A842-5ECEF446826A: supfile after inv process")
+	l("%s", dump.Format(conf))
 
 	l("parse network and commands to be run from args")
 	initData := entity.InitState{
@@ -142,4 +148,25 @@ func main() {
 			os.Exit(12)
 		}
 	}
+}
+
+func unpackInventories(conf *entity.Supfile) error {
+	l := kemba.New("unpackInventories").Printf
+	l("check if we have an inventory via script execution")
+	result := make(map[string]entity.Network)
+
+	for name, network := range conf.Networks.Nets {
+		if network.Inventory != "" {
+			hosts, err := network.ParseInventory()
+			if err != nil {
+				return err
+			}
+			network.Hosts = hosts
+		}
+		result[name] = network
+	}
+
+	conf.Networks.Nets = result
+
+	return nil
 }
