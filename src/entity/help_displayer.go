@@ -107,8 +107,9 @@ func colorCmdUsage(conf *Supfile) {
 	l := kemba.New("entity::colorCmdUsage").Printf
 	if conf.Desc != "" {
 		pterm.Info.Prefix = pterm.Prefix{Text: "Supfile Description:", Style: pterm.NewStyle(pterm.BgCyan, pterm.FgBlack)}
+		pterm.Info.Println("")
 		cleanDesc := strings.TrimSpace(conf.Desc)
-		pterm.Info.Println(cleanDesc)
+		pterm.Println(cleanDesc)
 	}
 
 	l("printing commands")
@@ -193,7 +194,7 @@ func cmdUsage(conf *Supfile) {
 	if conf.Desc != "" {
 		fmt.Fprintln(w, "Description:\t")
 		cleanDesc := strings.TrimSpace(conf.Desc)
-		fmt.Fprintf(w, "%v", cleanDesc)
+		fmt.Fprintf(w, "%s\n\n", cleanDesc)
 	}
 
 	fmt.Fprintln(w, "Commands:\t")
