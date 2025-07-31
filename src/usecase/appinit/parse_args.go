@@ -3,6 +3,7 @@ package appinit
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/clok/kemba"
 	"github.com/gookit/goutil/dump"
@@ -27,10 +28,17 @@ func ParseInitialArgs(initData entity.InitState) (*entity.PlayBook, error) {
 
 	l("check we have any args at all, len: %v", argsCount)
 	switch {
-	case argsCount < 1: // no args given
+
+	case initData.InitialArgs.TestConnections:
 		doTestConnections(conf)
+		helpMenu.ShowNetwork = true
 		helpMenu.ShowAll(conf)
 		return nil, entity.ErrUsage
+
+	case argsCount < 1: // no args given
+		helpMenu.ShowAll(conf)
+		return nil, entity.ErrUsage
+
 	}
 
 	netCount := len(conf.Networks.Names)
@@ -92,6 +100,14 @@ func doTestConnections(cfg *entity.Supfile) {
 				}
 
 			}
+		}
+
+		for hostNum, givenHost := range network.Hosts {
+			if strings.HasPrefix(givenHost.Host, "ERR") {
+				continue
+			}
+			givenHost.Host = fmt.Sprintf("%s: %s", "YES", givenHost.Host)
+			network.Hosts[hostNum] = givenHost
 		}
 
 		if bastionErr != nil {

@@ -2,21 +2,23 @@ package entity
 
 import "fmt"
 
+// InitialArgs contains values from flags during program init
 type InitialArgs struct {
 	Supfile     string
 	EnvVars     FlagStringSlice
-	SshConfig   string
+	SSHConfig   string
 	OnlyHosts   string
 	ExceptHosts string
 
 	Debug         bool
 	DisablePrefix bool
 
-	ShowVersion  bool
-	ShowExample  bool
-	ShowHelp     bool
-	DisableColor bool
-	CommandArgs  []string
+	ShowVersion     bool
+	ShowExample     bool
+	ShowHelp        bool
+	DisableColor    bool
+	TestConnections bool
+	CommandArgs     []string
 }
 
 type FlagStringSlice []string

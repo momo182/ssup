@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/clok/kemba"
 	"github.com/gookit/goutil/dump"
@@ -297,6 +298,8 @@ func (c *RemoteClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) 
 	if config == nil {
 		return fmt.Errorf("ssh ClientConfig is nil")
 	}
+
+	config.Timeout = 500 * time.Millisecond
 
 	l("creating ssh client")
 	c.conn, err = dialer("tcp", c.Host, config)

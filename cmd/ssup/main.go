@@ -24,7 +24,7 @@ func init() {
 	flag.StringVar(&initialArgs.Supfile, "f", "", "Custom path to ./Supfile[.yml]")
 	flag.Var(&initialArgs.EnvVars, "e", "Set environment variables")
 	flag.Var(&initialArgs.EnvVars, "env", "Set environment variables")
-	flag.StringVar(&initialArgs.SshConfig, "sshconfig", "", "Read SSH Config file, ie. ~/.ssh/config file")
+	flag.StringVar(&initialArgs.SSHConfig, "sshconfig", "", "Read SSH Config file, ie. ~/.ssh/config file")
 	flag.StringVar(&initialArgs.OnlyHosts, "only", "", "Filter hosts using regexp")
 	flag.StringVar(&initialArgs.ExceptHosts, "except", "", "Filter out hosts using regexp")
 
@@ -39,6 +39,8 @@ func init() {
 	flag.BoolVar(&initialArgs.DisableColor, "no-color", false, "Disable color")
 	flag.BoolVar(&initialArgs.ShowHelp, "h", false, "Show help")
 	flag.BoolVar(&initialArgs.ShowHelp, "help", false, "Show help")
+	flag.BoolVar(&initialArgs.TestConnections, "t", false, "Test connections")
+	flag.BoolVar(&initialArgs.TestConnections, "test", false, "Test connections")
 
 	logrus.SetFormatter(oopslogrus.NewOopsFormatter(&logrus.JSONFormatter{
 		PrettyPrint: true,

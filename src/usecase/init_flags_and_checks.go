@@ -28,7 +28,7 @@ func CheckInitialArgs(network *entity.Network, initialArgs *entity.InitialArgs) 
 	}
 
 	l("--sshconfig flag location for ssh_config file")
-	if initialArgs.SshConfig != "" {
+	if initialArgs.SSHConfig != "" {
 		checkSSHConfig(network, initialArgs)
 	}
 
@@ -37,8 +37,8 @@ func CheckInitialArgs(network *entity.Network, initialArgs *entity.InitialArgs) 
 func checkSSHConfig(network *entity.Network, initialArgs *entity.InitialArgs) {
 	l := kemba.New("usecase > checkSSHConfig").Printf
 
-	l("sshconfig: %s", initialArgs.SshConfig)
-	confHosts, err := sshconfig.ParseSSHConfig(ResolvePath(initialArgs.SshConfig))
+	l("sshconfig: %s", initialArgs.SSHConfig)
+	confHosts, err := sshconfig.ParseSSHConfig(ResolvePath(initialArgs.SSHConfig))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(41)
