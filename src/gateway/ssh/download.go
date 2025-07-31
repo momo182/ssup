@@ -23,12 +23,23 @@ func (c *RemoteClient) Download(remotePath, localPath string, silent bool, flat 
 		remotePath = filepath.Join(homeDir, remotePath[2:])
 	}
 
+	// Handle ~ for remote paths
+	if strings.HasPrefix(localPath, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		homeDir := home
+		localPath = filepath.Join(homeDir, localPath[2:])
+	}
+
 	l("Will download from:", remotePath)
 	l("Will download to:", localPath)
 
 	if !silent {
-		fmt.Println("Will download from:", remotePath)
-		fmt.Println("Will download to:", localPath)
+		fmt.Println("+ download:")
+		fmt.Println("  src:", remotePath)
+		fmt.Println("  dst:", localPath)
 	}
 
 	if !flat {
