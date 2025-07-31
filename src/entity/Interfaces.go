@@ -23,7 +23,7 @@ type ClientFacade interface {
 	Stdout() io.Reader
 	Signal(os.Signal) error
 	Upload(src string, dest string) error
-	Download(src string, dest string, silent bool) error
+	Download(src string, dest string, silent bool, flat bool) error
 	GenerateOnRemote(data []byte, dest string) error
 	GetHost() string
 	GetTube() string

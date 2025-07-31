@@ -155,13 +155,14 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 	l("task:\n%v", task)
 	l("clients:\n%v", task.Clients)
 
-	// Канал для сбора первой ошибки
-	errChan := make(chan error, len(task.Clients))
-	var wg sync.WaitGroup
-
-	if len(task.Clients) == 0 {
+	totalClients := len(task.Clients)
+	if totalClients == 0 {
 		return fmt.Errorf("no clients to run task on")
 	}
+
+	// Канал для сбора первой ошибки
+	errChan := make(chan error, totalClients)
+	var wg sync.WaitGroup
 
 	// Флаг для отслеживания, была ли ошибка и отмена уже инициирована
 	var canceled int32 // 0 = false, 1 = true
@@ -238,10 +239,17 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 		}
 
 		// Handle uploads if any.
+		if totalClients == 1 {
+			for counter, command := range cmd.Fetch {
+				command.Flat = true
+				cmd.Fetch[counter] = command
+			}
+		}
+
 		l("handling fetch for %s", c.GetHost())
 		if err := sup.handleDownloads(c, cmd.Fetch); err != nil {
 			setCanceled() // Отменяем при ошибке загрузки
-			errChan <- errors.Wrap(err, prefix+"upload failed")
+			errChan <- errors.Wrap(err, prefix+"fetch failed")
 			// Не возвращаем сразу, даем возможность запустить другие клиенты или дождаться уже запущенных
 			continue // Или break если нужно остановить обработку других клиентов в этом runTask
 		}
@@ -267,7 +275,7 @@ func (sup *Stackup) handleDownloads(client entity.ClientFacade, downloads []*ent
 	l := kemba.New("uc::Stackup::handleDownloads").Printf
 	for _, download := range downloads {
 		l("download command: %v", download.Src)
-		if err := client.Download(download.Src, download.Dst, false); err != nil {
+		if err := client.Download(download.Src, download.Dst, false, download.Flat); err != nil {
 			return sup.WrapError("606ED9CC-9930-42FD-9189-927278EFFD7A", "running download command failed", err)
 		}
 	}

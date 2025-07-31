@@ -259,7 +259,6 @@ func (c *LocalhostClient) Wait() error {
 	}
 
 	defer func() {
-
 		tgt := home + "/" + entity.VARS_FILE
 		l("cleanup: %s", tgt)
 		// no error handling here is OKayish for the moment
@@ -383,7 +382,7 @@ func (c *LocalhostClient) Upload(src, dst string) error {
 	return nil
 }
 
-func (c *LocalhostClient) Download(src, dst string, silent bool) error {
+func (c *LocalhostClient) Download(src, dst string, silent bool, _ bool) error {
 	l := kemba.New("gw::local::download").Printf
 	l("kinda downloading %s to %s", src, dst)
 	l("but its just a cp call")

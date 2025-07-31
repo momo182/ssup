@@ -13,7 +13,7 @@ import (
 )
 
 // Download file from remote
-func (c *RemoteClient) Download(remotePath, localPath string, silent bool) error {
+func (c *RemoteClient) Download(remotePath, localPath string, silent bool, flat bool) error {
 	l := kemba.New("gw::ssh::download").Printf
 	l("will download %s to local:%s", remotePath, localPath)
 
@@ -29,6 +29,10 @@ func (c *RemoteClient) Download(remotePath, localPath string, silent bool) error
 	if !silent {
 		fmt.Println("Will download from:", remotePath)
 		fmt.Println("Will download to:", localPath)
+	}
+
+	if !flat {
+		localPath = localPath + fmt.Sprintf("@%s", c.GetHost())
 	}
 
 	client, err := connectSFTP(c.GetConnection())
