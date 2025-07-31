@@ -142,7 +142,7 @@ func (c *LocalhostClient) Connect(_ entity.NetworkHost) error { // FuncName: Con
 // but it doesnot have to be, we could skip the copy altogether
 // and just set PATH to include the folder
 func copyDistFolders(c *LocalhostClient) error {
-	l := kemba.New("gw::ssh::SSHClient.copyDistFolders").Printf
+	l := kemba.New("gw::ssh::LocalClient.copyDistFolders").Printf
 	l("copying dist folder")
 
 	if c == nil {

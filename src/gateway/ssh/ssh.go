@@ -688,9 +688,15 @@ func FindAllPaths(rootPath string) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		if !strings.Contains(path, ".DS_Store") {
-			paths = append(paths, path)
+
+		if strings.Contains(path, ".DS_Store") {
+			return nil
 		}
+
+		if path == rootPath { // Skip the root directory itself
+			return nil
+		}
+
 		return nil
 	})
 
