@@ -5,7 +5,9 @@ import (
 	"os"
 
 	"github.com/clok/kemba"
+	"github.com/gookit/goutil/dump"
 	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/usecase"
 
 	// "github.com/momo182/ssup/src/usecase/modes"
 	"github.com/no-src/nsgo/osutil"
@@ -26,6 +28,7 @@ func ParseInitialArgs(initData entity.InitState) (*entity.PlayBook, error) {
 	l("check we have any args at all, len: %v", argsCount)
 	switch {
 	case argsCount < 1: // no args given
+		doTestConnections(conf)
 		helpMenu.ShowAll(conf)
 		return nil, entity.ErrUsage
 	}
@@ -62,6 +65,44 @@ func ParseInitialArgs(initData entity.InitState) (*entity.PlayBook, error) {
 			return nil, err
 		}
 		return makefileFlow, nil
+	}
+}
+
+func doTestConnections(cfg *entity.Supfile) {
+	l := kemba.New("usecase::appinit::doTestConnections").Printf
+	sup := usecase.NewStackup(cfg)
+	var bastionErr error
+
+	for selectedNetName, network := range cfg.Networks.Nets {
+		bastion, err := sup.ConnectToBastionHostHelper(&network)
+		if err != nil {
+			bastionErr = err
+		}
+
+		l("connected to bastion")
+
+		clients, _, failedHosts := sup.ConnectToHostsHelper(&network, bastion)
+		if len(failedHosts) != 0 {
+			for hostNum, givenHost := range network.Hosts {
+				for _, hostName := range failedHosts {
+					if hostName == givenHost.Host {
+						givenHost.Host = fmt.Sprintf("%s: %s", "ERR", hostName)
+						network.Hosts[hostNum] = givenHost
+					}
+				}
+
+			}
+		}
+
+		if bastionErr != nil {
+			fmt.Println(bastionErr.Error())
+			os.Exit(1)
+		}
+
+		cfg.Networks.Nets[selectedNetName] = network
+
+		l("connected to clients")
+		l(dump.Format(clients))
 	}
 }
 

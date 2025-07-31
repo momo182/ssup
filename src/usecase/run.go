@@ -46,19 +46,27 @@ func (sup *Stackup) Run(isMakefileMode bool, network *entity.Network, envVars en
 	defer cancel()                                          // На всякий случай, если не отменим явно
 
 	if len(commands) == 0 {
-		return sup.wrapError("1DF987CA-1E81-4C48-9163-DDAEA0C0CDF7", "no commands to be run", errors.New("no commands provided"))
+		return sup.WrapError("1DF987CA-1E81-4C48-9163-DDAEA0C0CDF7", "no commands to be run", errors.New("no commands provided"))
 	}
 
-	bastion, err := sup.connectToBastionHostHelper(network)
+	bastion, err := sup.ConnectToBastionHostHelper(network)
 	if err != nil {
-		return sup.wrapError("60267BB8-0049-4819-BA06-30EFDFE161AD", "connecting to bastion host failed", err)
+		return sup.WrapError("60267BB8-0049-4819-BA06-30EFDFE161AD", "connecting to bastion host failed", err)
 	}
+
 	l("connected to bastion")
 
-	clients, maxLen, err := sup.connectToHostsHelper(network, bastion)
-	if err != nil {
-		return sup.wrapError("B9E27F42-9351-4F36-9174-4B1F7B0B97D5", "connecting to clients failed", err)
+	clients, maxLen, failedHosts := sup.ConnectToHostsHelper(network, bastion)
+	if len(failedHosts) != 0 {
+		for name := range failedHosts {
+			fmt.Printf("connecion failed: %s\n", name)
+		}
+		return sup.WrapError("B9E27F42-9351-4F36-9174-4B1F7B0B97D5", "connecting to clients failed", err)
 	}
+
+	// if err != nil {
+	// 	return sup.WrapError("B9E27F42-9351-4F36-9174-4B1F7B0B97D5", "connecting to clients failed", err)
+	// }
 
 	l("connected to clients")
 	l(dump.Format(clients))
@@ -67,7 +75,7 @@ func (sup *Stackup) Run(isMakefileMode bool, network *entity.Network, envVars en
 		l("processing command:\n%v", dump.Format(cmd))
 		tasks, err := CreateTasks(cmd, clients, envVars, sup.Args)
 		if err != nil {
-			return sup.wrapError("75F613AD-0E35-4FA0-A9D5-5A44B0C4EB08", "creating tasks failed", err)
+			return sup.WrapError("75F613AD-0E35-4FA0-A9D5-5A44B0C4EB08", "creating tasks failed", err)
 		}
 
 		for _, task := range tasks {
@@ -88,7 +96,7 @@ func (sup *Stackup) Run(isMakefileMode bool, network *entity.Network, envVars en
 }
 
 // Helper function to wrap errors consistently.
-func (sup *Stackup) wrapError(traceID, hint string, err error) error {
+func (sup *Stackup) WrapError(traceID, hint string, err error) error {
 	return oops.Trace(traceID).Hint(hint).Wrap(err)
 }
 
@@ -101,25 +109,33 @@ func (sup *Stackup) cleanupTempFile(file *os.File) {
 }
 
 // Helper function to connect to the bastion host.
-func (sup *Stackup) connectToBastionHostHelper(network *entity.Network) (entity.ClientFacade, error) {
+func (sup *Stackup) ConnectToBastionHostHelper(network *entity.Network) (entity.ClientFacade, error) {
 	l := kemba.New("uc::Stackup::connectToBastionHostHelper").Printf
 	l("about to connect to bastion:\n%v", network.Hosts)
 	return sup.connectToBastionHost(network) // Assuming this is the actual method on the Stackup struct.
 }
 
-// Helper function to connect to all hosts.
-func (sup *Stackup) connectToHostsHelper(network *entity.Network, bastion entity.ClientFacade) ([]entity.ClientFacade, int, error) {
+// ConnectToHostsHelper is a helper function to connect to all hosts.
+func (sup *Stackup) ConnectToHostsHelper(network *entity.Network, bastion entity.ClientFacade) ([]entity.ClientFacade, int, []string) {
 	l := kemba.New("uc::Stackup::connectToHostsHelper").Printf
 
 	l(dump.Format(network))
 	l("about to connect to hosts:\n%v", network.Hosts)
 
-	clients := try.E1(connectToHosts(network, bastion.(*clientSSH.RemoteClient)))
+	clients, hostnamesWithErr := connectToHosts(network, bastion.(*clientSSH.RemoteClient))
+
+	if len(hostnamesWithErr) != 0 {
+		for _, hostnameWithErr := range hostnamesWithErr {
+			l("hostname failed to connect: %v", hostnameWithErr)
+		}
+		return nil, 0, hostnamesWithErr
+	}
 
 	if len(clients) == 0 {
 		//bail
-		return nil, 0, fmt.Errorf("no hosts connected")
+		return nil, 0, []string{"all"}
 	}
+
 	l("hots after connect fn:\n%s", dump.Format(clients))
 	maxLen := 0
 	for _, client := range clients {
@@ -240,7 +256,7 @@ func (sup *Stackup) handleUploads(client entity.ClientFacade, uploads []*entity.
 	for _, upload := range uploads {
 		l("upload command: %v", upload.Src)
 		if err := client.Upload(upload.Src, upload.Dst); err != nil {
-			return sup.wrapError("28D38F66-3258-4578-A275-7D70F3765C0A", "running upload command failed", err)
+			return sup.WrapError("28D38F66-3258-4578-A275-7D70F3765C0A", "running upload command failed", err)
 		}
 	}
 	return nil
@@ -252,7 +268,7 @@ func (sup *Stackup) handleDownloads(client entity.ClientFacade, downloads []*ent
 	for _, download := range downloads {
 		l("download command: %v", download.Src)
 		if err := client.Download(download.Src, download.Dst, false); err != nil {
-			return sup.wrapError("606ED9CC-9930-42FD-9189-927278EFFD7A", "running download command failed", err)
+			return sup.WrapError("606ED9CC-9930-42FD-9189-927278EFFD7A", "running download command failed", err)
 		}
 	}
 	return nil
@@ -356,10 +372,11 @@ func (sup *Stackup) getPrefix(client entity.ClientFacade, maxLen int, isMakefile
 	return prefix
 }
 
-func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([]entity.ClientFacade, error) {
+func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([]entity.ClientFacade, []string) {
 	l := kemba.New("usecase::run::connectToHosts").Printf
 	l("will range over hosts: %v", len(network.Hosts))
 	result := []entity.ClientFacade{}
+	errors := make([]string, 0)
 
 	// if len(network.Hosts) == 0 && network.Inventory != "" {
 	// 	parsedHosts, err := network.ParseInventory()
@@ -388,7 +405,7 @@ func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([
 			l("about to connect to localhost")
 			if err := local.Connect(host); err != nil {
 				fmt.Println(err, "connecting to localhost failed?!?!?")
-				os.Exit(1)
+				errors = append(errors, host.Host)
 			}
 			result = append(result, local)
 			continue
@@ -423,13 +440,13 @@ func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([
 			l("bastion is set, trying it now")
 			if err := remote.ConnectWith(host, bastion.DialThrough); err != nil {
 				fmt.Println(err, "connecting to remote host through bastion failed")
-				os.Exit(2)
+				errors = append(errors, host.Host)
 			}
 		} else {
 			l("connecting via direct connection")
 			if err := remote.Connect(host); err != nil {
 				fmt.Println(err, "connecting to remote host failed")
-				os.Exit(2)
+				errors = append(errors, host.Host)
 			}
 			l("connected")
 		}
@@ -438,7 +455,7 @@ func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([
 	}
 
 	l("connected to all hosts:\n%s", dump.Format(result))
-	return result, nil
+	return result, errors
 }
 
 func (*Stackup) connectToBastionHost(network *entity.Network) (*clientSSH.RemoteClient, error) {
