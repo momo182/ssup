@@ -4,14 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
-	"net"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/clok/kemba"
@@ -21,7 +18,6 @@ import (
 	"github.com/momo182/ssup/src/lobby"
 	svc "github.com/momo182/ssup/src/lobby"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -157,50 +153,6 @@ func (c *RemoteClient) parseHost(host string) error {
 	return nil
 }
 
-var initAuthMethodOnce sync.Once
-var authMethods []ssh.AuthMethod
-
-// initAuthMethod initiates SSH authentication method.
-// initAuthMethod initiates SSH authentication method.
-func initAuthMethod() {
-	l := kemba.New("gateway::ssh::initAuthMethod").Printf
-	l("initializing SSH authentication method")
-	var signers []ssh.Signer
-
-	// If there's a running SSH Agent, try to use its Private keys.
-	l("check ssh agent is running")
-	sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
-	if err == nil {
-		l("using SSH Agent")
-		agent := agent.NewClient(sock)
-		signers, _ = agent.Signers()
-	}
-
-	// Try to read user's SSH private keys from the standard paths.
-	l("check if user has SSH private keys")
-	files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
-	for _, file := range files {
-		if strings.HasSuffix(file, ".pub") {
-			continue // Skip public keys.
-		}
-		data, err := ioutil.ReadFile(file)
-		if err != nil {
-			continue
-		}
-		signer, err := ssh.ParsePrivateKey(data)
-		if err != nil {
-			continue
-		}
-		l("Using SSH private key: %s", file)
-		signers = append(signers, signer)
-
-	}
-	l("found %v SSH signers", len(signers))
-	auth := ssh.PublicKeys(signers...)
-	svc.ServiceRegistry.KeyAuth = &auth
-	l("done initializing SSH authentication method")
-}
-
 // SSHDialFunc can dial an ssh server and return a client
 type SSHDialFunc func(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error)
 
@@ -214,11 +166,8 @@ func (c *RemoteClient) Connect(host entity.NetworkHost) error {
 		return err
 	}
 
-	var authMethods []ssh.AuthMethod
-	initAuthMethodOnce.Do(initAuthMethod)
-
 	l("checking password auth")
-	authMethods = lobby.SetupAuthMethods(authMethods, host)
+	authMethods := lobby.SetupAuthMethods(host)
 
 	l("creating config")
 	// l(dump.Format(host, authMethods))
@@ -246,33 +195,38 @@ func copyDistFolders(c *RemoteClient) error {
 	l("copying dist folder")
 
 	if c == nil {
+		l("client is nil")
 		return errors.New("client is nil")
 	}
 
 	if c.Inventory == nil {
+		l("client inventory is nil")
 		return errors.New("client inventory is nil")
 	}
 
-	// list all files in ./dist folder in current directory
-	files, err := FindAllPaths("./dist")
-	if err != nil {
-		return errors.New("failed to list files in dist folder")
-	}
-
-	if len(files) == 0 {
-		return nil
-	}
-
-	l(dump.Format(c.Inventory))
-
-	// check if dist of ssupdist is present and if so copy it
-	// to remote host ~/.local/ssup/dist
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return errors.New("failed to get current directory")
 	}
 
 	srcPath := filepath.Join(currentDir, "dist")
+
+	l("inspecting ./dist folder")
+	if fsutil.PathExists(srcPath) {
+		files, err := ListFiles(srcPath)
+		if err != nil {
+			return errors.New("failed to list files in dist folder")
+		}
+
+		if len(files) == 0 {
+			return nil
+		}
+	}
+
+	l(dump.Format(c.Inventory))
+
+	// check if dist of ssupdist is present and if so copy it
+	// to remote host ~/.local/ssup/dist
 
 	_, err = os.Stat(srcPath)
 	if err != nil {
@@ -679,21 +633,67 @@ func (c *RemoteClient) buildRemoteCommand(task entity.Task) string {
 	return command
 }
 
+// ListFiles возвращает список всех файлов в директории dir, исключая .DS_Store
+func ListFiles(dir string) ([]string, error) {
+	l := kemba.New("SSHClient.ListFiles").Printf
+	var files []string
+	l("inspecting paths is dist folder")
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			l("error while walking through directories: %s", err)
+			return err
+		}
+
+		// Пропускаем саму директорию
+		if path == dir {
+			l("skipping root directory: %s", path)
+			return nil
+		}
+
+		// Пропускаем файлы .DS_Store
+		if info.Name() == ".DS_Store" {
+			l("skipping .DS_Store file: %s", path)
+			return nil
+		}
+
+		// Добавляем только файлы, не директории
+		if !info.IsDir() {
+			l("adding file: %s")
+			files = append(files, path)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		l("error while walking through directories: %s", err)
+		return nil, err
+	}
+
+	l("done inspecting ./dist")
+	return files, nil
+}
+
 // FindAllPaths находит все файлы и папки в указанной директории
 // и возвращает их пути в виде среза строк
 func FindAllPaths(rootPath string) ([]string, error) {
+	l := kemba.New("SSHClient.FindAllPaths").Printf
 	var paths []string
 
+	l("inspecting paths is dist folder")
 	err := filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+
 			return err
 		}
 
 		if strings.Contains(path, ".DS_Store") {
+
 			return nil
 		}
 
 		if path == rootPath { // Skip the root directory itself
+
 			return nil
 		}
 
@@ -701,6 +701,7 @@ func FindAllPaths(rootPath string) ([]string, error) {
 	})
 
 	if err != nil {
+
 		return nil, err
 	}
 

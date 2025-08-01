@@ -12,20 +12,26 @@ import (
 
 // SetupAuthMethods returns the authentication methods to use
 // when connecting to a remote server
-func SetupAuthMethods(authMethods []ssh.AuthMethod, host entity.NetworkHost) []ssh.AuthMethod {
-	l := kemba.New("shared::checksshpass::SetupAuthMethods").Println
+func SetupAuthMethods(host entity.NetworkHost) []ssh.AuthMethod {
+	l := kemba.New("lobby::checksshpass::SetupAuthMethods").Println
 	password := host.Password
 
-	if *ServiceRegistry.KeyAuth == nil || strutil.IsEmpty(password) {
+	if ServiceRegistry == nil {
+		fmt.Println("B6402412-2790-45A8-B8AC-9D53547649EE: no service registry, halting")
+	}
+
+	if ServiceRegistry.KeyAuth == nil && strutil.IsEmpty(password) {
 		fmt.Println("EDF488C4-F467-4279-A031-241F05BCDBC3: no auth methods are set, halting")
 		os.Exit(23)
 	}
 
+	var authMethods []ssh.AuthMethod
+
 	if !strutil.IsEmpty(password) {
 		l("adding password auth to ssh")
 		authMethods = []ssh.AuthMethod{
-			ssh.Password(password),
 			*ServiceRegistry.KeyAuth,
+			ssh.Password(password),
 		}
 	} else {
 		l("not adding password authentication")

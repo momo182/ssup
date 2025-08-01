@@ -3,7 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"net"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/clok/kemba"
 	"github.com/davecgh/go-spew/spew"
@@ -16,6 +20,8 @@ import (
 	"github.com/momo182/ssup/src/usecase/appinit"
 	oopslogrus "github.com/samber/oops/loggers/logrus"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 var initialArgs *entity.InitialArgs = &entity.InitialArgs{}
@@ -107,6 +113,8 @@ func main() {
 		l("%v", dump.Format(playbook))
 	}
 
+	initAuthMethod()
+
 	for _, play := range playbook.GetPlays() {
 		isMakefileMode := playbook.IsMakefileMode()
 
@@ -171,4 +179,44 @@ func unpackInventories(conf *entity.Supfile) error {
 	conf.Networks.Nets = result
 
 	return nil
+}
+
+// initAuthMethod initiates SSH authentication method.
+func initAuthMethod() {
+	l := kemba.New("lobby::initAuthMethod").Printf
+	l("initializing SSH authentication method")
+	var signers []ssh.Signer
+
+	// If there's a running SSH Agent, try to use its Private keys.
+	l("check ssh agent is running")
+	sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+	if err == nil {
+		l("using SSH Agent")
+		agent := agent.NewClient(sock)
+		signers, _ = agent.Signers()
+	}
+
+	// Try to read user's SSH private keys from the standard paths.
+	l("check if user has SSH private keys")
+	files, _ := filepath.Glob(os.Getenv("HOME") + "/.ssh/id_*")
+	for _, file := range files {
+		if strings.HasSuffix(file, ".pub") {
+			continue // Skip public keys.
+		}
+		data, err := ioutil.ReadFile(file)
+		if err != nil {
+			continue
+		}
+		signer, err := ssh.ParsePrivateKey(data)
+		if err != nil {
+			continue
+		}
+		l("Using SSH private key: %s", file)
+		signers = append(signers, signer)
+
+	}
+	l("found %v SSH signers", len(signers))
+	auth := ssh.PublicKeys(signers...)
+	serviceLobby.ServiceRegistry.KeyAuth = &auth
+	l("done initializing SSH authentication method")
 }
