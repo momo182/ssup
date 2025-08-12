@@ -26,17 +26,18 @@ func SetupAuthMethods(host entity.NetworkHost) []ssh.AuthMethod {
 	}
 
 	var authMethods []ssh.AuthMethod
+	keyAuth := ServiceRegistry.KeyAuth
 
 	if !strutil.IsEmpty(password) {
 		l("adding password auth to ssh")
 		authMethods = []ssh.AuthMethod{
-			*ServiceRegistry.KeyAuth,
+			keyAuth,
 			ssh.Password(password),
 		}
 	} else {
 		l("not adding password authentication")
 		authMethods = []ssh.AuthMethod{
-			*ServiceRegistry.KeyAuth,
+			keyAuth,
 		}
 	}
 	l("Auth methods:", authMethods)

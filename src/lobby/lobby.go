@@ -19,7 +19,7 @@ import (
 
 // ServiceLobby holds common serices used by many places in code
 type ServiceLobby struct {
-	KeyAuth    *ssh.AuthMethod
+	KeyAuth    ssh.AuthMethod
 	Namespaces *namespace.Namespace
 }
 

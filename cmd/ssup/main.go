@@ -55,6 +55,7 @@ func init() {
 	spew.Config.MaxDepth = entity.SPEW_DEPTH
 	serviceLobby.ServiceRegistry = &serviceLobby.ServiceLobby{}
 	serviceLobby.ServiceRegistry.Namespaces = namespace.New()
+	initAuthMethod()
 }
 
 func main() {
@@ -112,8 +113,6 @@ func main() {
 		l("playbook is nil: negative checks passed")
 		l("%v", dump.Format(playbook))
 	}
-
-	initAuthMethod()
 
 	for _, play := range playbook.GetPlays() {
 		isMakefileMode := playbook.IsMakefileMode()
@@ -217,6 +216,6 @@ func initAuthMethod() {
 	}
 	l("found %v SSH signers", len(signers))
 	auth := ssh.PublicKeys(signers...)
-	serviceLobby.ServiceRegistry.KeyAuth = &auth
+	serviceLobby.ServiceRegistry.KeyAuth = auth
 	l("done initializing SSH authentication method")
 }
