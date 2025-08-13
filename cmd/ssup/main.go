@@ -86,7 +86,7 @@ func main() {
 		os.Exit(1)
 	}
 	l("4685D4CC-E39C-49E7-A842-5ECEF446826A: supfile after inv process")
-	l("%s", godump.DumpStr(conf))
+	l("%s", spew.Sdump(conf))
 
 	l("parse network and commands to be run from args")
 	initData := entity.InitState{
