@@ -12,7 +12,7 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/dsnet/try"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/goware/prefixer"
 	"github.com/momo182/ssup/src/entity"
@@ -40,8 +40,15 @@ func NewStackup(conf *entity.Supfile) *Stackup {
 //
 //	TODO: This megamoth method needs a big refactor and should be split
 //	to multiple smaller methods.
-func (sup *Stackup) Run(isMakefileMode bool, network *entity.Network, envVars entity.EnvList, commands ...*entity.Command) error {
+func (sup *Stackup) Run(runOrder entity.RunOrder) error {
 	l := kemba.New("uc::Stackup::Run").Printf
+
+	isMakefileMode := runOrder.MakefileMode
+	network := runOrder.Network
+	envVars := runOrder.Vars
+	commands := runOrder.Commands
+	args := runOrder.Args
+
 	ctx, cancel := context.WithCancel(context.Background()) // Создать контекст
 	defer cancel()                                          // На всякий случай, если не отменим явно
 
@@ -58,21 +65,19 @@ func (sup *Stackup) Run(isMakefileMode bool, network *entity.Network, envVars en
 
 	clients, maxLen, failedHosts := sup.ConnectToHostsHelper(network, bastion)
 	if len(failedHosts) != 0 {
-		for name := range failedHosts {
-			fmt.Printf("connecion failed: %s\n", name)
+		for _, name := range failedHosts {
+			fmt.Printf("connection failed for host (add -z to skip unreachable hosts): %s\n", name)
 		}
-		return sup.WrapError("B9E27F42-9351-4F36-9174-4B1F7B0B97D5", "connecting to clients failed", err)
+		if !args.Force {
+			return sup.WrapError("B9E27F42-9351-4F36-9174-4B1F7B0B97D5", "connecting to clients failed", err)
+		}
 	}
 
-	// if err != nil {
-	// 	return sup.WrapError("B9E27F42-9351-4F36-9174-4B1F7B0B97D5", "connecting to clients failed", err)
-	// }
-
 	l("connected to clients")
-	l(dump.Format(clients))
+	l(godump.DumpStr(clients))
 
 	for _, cmd := range commands {
-		l("processing command:\n%v", dump.Format(cmd))
+		l("processing command:\n%v", godump.DumpStr(cmd))
 		tasks, err := CreateTasks(cmd, clients, envVars, sup.Args)
 		if err != nil {
 			return sup.WrapError("75F613AD-0E35-4FA0-A9D5-5A44B0C4EB08", "creating tasks failed", err)
@@ -119,7 +124,7 @@ func (sup *Stackup) ConnectToBastionHostHelper(network *entity.Network) (entity.
 func (sup *Stackup) ConnectToHostsHelper(network *entity.Network, bastion entity.ClientFacade) ([]entity.ClientFacade, int, []string) {
 	l := kemba.New("uc::Stackup::connectToHostsHelper").Printf
 
-	l(dump.Format(network))
+	l(godump.DumpStr(network))
 	l("about to connect to hosts:\n%v", network.Hosts)
 
 	clients, hostnamesWithErr := connectToHosts(network, bastion.(*clientSSH.RemoteClient))
@@ -127,8 +132,14 @@ func (sup *Stackup) ConnectToHostsHelper(network *entity.Network, bastion entity
 	if len(hostnamesWithErr) != 0 {
 		for _, hostnameWithErr := range hostnamesWithErr {
 			l("hostname failed to connect: %v", hostnameWithErr)
+			for n, client := range clients {
+				if client.GetHost() == hostnameWithErr {
+					clients = removeIndex(clients, n)
+				}
+			}
 		}
-		return nil, 0, hostnamesWithErr
+		// disable this for -z flag
+		// return nil, 0, hostnamesWithErr
 	}
 
 	if len(clients) == 0 {
@@ -136,7 +147,7 @@ func (sup *Stackup) ConnectToHostsHelper(network *entity.Network, bastion entity
 		return nil, 0, []string{"all"}
 	}
 
-	l("hots after connect fn:\n%s", dump.Format(clients))
+	l("hots after connect fn:\n%s", godump.DumpStr(clients))
 	maxLen := 0
 	for _, client := range clients {
 		_, prefixLen := client.Prefix()
@@ -145,8 +156,21 @@ func (sup *Stackup) ConnectToHostsHelper(network *entity.Network, bastion entity
 		}
 	}
 
+	if len(hostnamesWithErr) == 0 {
+		hostnamesWithErr = nil
+	}
+
 	l("connected to all clients")
-	return clients, maxLen, nil
+
+	return clients, maxLen, hostnamesWithErr
+}
+
+func removeIndex(s []entity.ClientFacade, index int) []entity.ClientFacade {
+	if index < 0 || index >= len(s) {
+		fmt.Println("clean unreachable clients: index out of range")
+		os.Exit(1)
+	}
+	return append(s[:index], s[index+1:]...)
 }
 
 // Helper function to run a task.
@@ -333,7 +357,7 @@ func (sup *Stackup) handleSignals(task *entity.Task, logger func(string, ...inte
 	signal.Notify(trap, os.Interrupt)
 	go func() {
 		for sig := range trap {
-			logger("sending signal %s to %s\n", sig.String(), dump.Format(task))
+			logger("sending signal %s to %s\n", sig.String(), godump.DumpStr(task))
 			for _, c := range task.Clients {
 				if err := c.Signal(sig); err != nil {
 					fmt.Fprintf(os.Stderr, "%v", errors.Wrap(err, "sending signal failed"))
@@ -458,7 +482,7 @@ func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([
 		}
 	}
 
-	l("connected to all hosts:\n%s", dump.Format(clients))
+	l("connected to all hosts:\n%s", godump.DumpStr(clients))
 	return clients, errors
 }
 

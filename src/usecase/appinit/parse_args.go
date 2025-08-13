@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/usecase"
 
@@ -118,7 +118,7 @@ func doTestConnections(cfg *entity.Supfile) {
 		cfg.Networks.Nets[selectedNetName] = network
 
 		l("connected to clients")
-		l(dump.Format(clients))
+		l(godump.DumpStr(clients))
 	}
 }
 

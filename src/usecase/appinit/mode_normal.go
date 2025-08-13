@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 )
 
@@ -78,7 +78,7 @@ func normalMode(initData entity.InitState, helpMenu entity.HelpDisplayer) (*enti
 	// add play into resulting playbook
 	result.AddPlay(play)
 	l("dump: A0ED3871-1622-4D93-BCBF-1924CE2828A9")
-	l("%s", dump.Format(result))
+	l("%s", godump.DumpStr(result))
 
 	return result, nil
 }

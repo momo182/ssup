@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/samber/oops"
 )
@@ -25,7 +25,7 @@ func (s *ShellCheckProvider) Check(cmd string, cmdName string) error {
 
 	scPath, err := exec.LookPath("shellcheck")
 	l("shellcheck path:", scPath)
-	l("command:\n%s", dump.Format(cmd))
+	l("command:\n%s", godump.DumpStr(cmd))
 
 	if err == nil {
 		check := []string{"shellcheck", "-f", "tty", "-Calways", "-e", "SC2148,SC2155,SC2001", "-"}

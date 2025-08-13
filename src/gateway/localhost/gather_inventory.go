@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 	"golang.org/x/crypto/ssh"
 )
@@ -105,7 +105,7 @@ func runLocalCommand(command []string) ([]byte, error) {
 
 	// now process the usual case
 	cmd := exec.Command(command[0], command[1:]...)
-	l(dump.Format(cmd.Args))
+	l(godump.DumpStr(cmd.Args))
 	output, err := cmd.Output()
 	if err != nil {
 		l("got error running command: %v", err)

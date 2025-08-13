@@ -19,6 +19,7 @@ type InitialArgs struct {
 	DisableColor    bool
 	TestConnections bool
 	CommandArgs     []string
+	Force           bool
 }
 
 type FlagStringSlice []string

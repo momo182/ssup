@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/gateway/namespace"
 	sf "github.com/wissance/stringFormatter"
@@ -171,7 +171,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 		"shell":             shell,
 	}
 
-	l(dump.Format(data))
+	l(godump.DumpStr(data))
 
 	switch sudo {
 	case true:
@@ -286,6 +286,6 @@ func InjectNamespacesAndEnvs(task entity.Task, Env entity.EnvList, c entity.Clie
 		}
 	}
 
-	l("done injecting namespaces and envs:\n%s", dump.Format(Env))
+	l("done injecting namespaces and envs:\n%s", godump.DumpStr(Env))
 	return Env
 }

@@ -7,9 +7,9 @@ import (
 	"os"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
 	"github.com/momo182/ssup/src/entity"
 
+	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/gateway/localhost"
 	"github.com/pkg/errors"
 	"github.com/samber/oops"
@@ -121,7 +121,7 @@ func AppendCommandEnvsToTask(cmd *entity.Command, task *entity.Task) {
 
 	l("dump: 61B6EDEA-0EA0-4466-95CB-08AEEB7D0258")
 	l("before:")
-	l(dump.Format(task))
+	l(godump.DumpStr(task))
 
 	if cmd == nil {
 		log.Panic("20ABE4E4-447D-443A-A3F2-36A9E61C721C: got null command")
@@ -152,7 +152,7 @@ func AppendCommandEnvsToTask(cmd *entity.Command, task *entity.Task) {
 
 	l("dump: 65589739-F0F5-4D96-A535-07684F4F5CC0")
 	l("after:")
-	l(dump.Format(task))
+	l(godump.DumpStr(task))
 
 	l("done appending command envs")
 }
@@ -205,7 +205,7 @@ func decorateTaskDetails(args *entity.InitialArgs, task *entity.Task, cmd *entit
 	}
 	l("dump: 35C3F8BB-1FAC-4C47-B996-C513AF335CA7")
 	l("task about to run here:")
-	l(dump.Format(task))
+	l(godump.DumpStr(task))
 }
 
 func processClientsInGroups(clients []entity.ClientFacade, cmd *entity.Command, task entity.Task, tasks []*entity.Task) []*entity.Task {

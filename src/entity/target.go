@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"gopkg.in/yaml.v2"
 )
 
@@ -38,7 +38,7 @@ func (t *Targets) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	l("dump: 4DE17602-DD0A-4BB7-9F5C-5791CD88C2DB")
-	l("%s", dump.Format(items))
+	l("%s", godump.DumpStr(items))
 
 	t.Names = make([]string, len(items))
 
@@ -84,14 +84,14 @@ func (t *Targets) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	l("dump: 2C5FF6CA-FA5A-465B-A2C7-D40E94652819")
-	l("%s", dump.Format(t))
+	l("%s", godump.DumpStr(t))
 	return nil
 }
 
 func (t *Targets) Get(name string) ([]string, bool) {
 	l := kemba.New("entity::targets::Get").Printf
 	cmds, ok := t.targets[name]
-	l("%s", dump.Format(cmds))
+	l("%s", godump.DumpStr(cmds))
 	return cmds, ok
 }
 
@@ -103,7 +103,7 @@ func (t *Targets) Has(name string) bool {
 func (t *Targets) GetAffixByCommandName(name string) (AffixMappig, bool) {
 	l := kemba.New("entity::targets::GetAffixByCommandName").Printf
 	affix, ok := t.affixes[name]
-	l(dump.Format(affix))
+	l(godump.DumpStr(affix))
 	return affix, ok
 }
 

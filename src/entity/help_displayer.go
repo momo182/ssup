@@ -8,7 +8,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/pterm/pterm"
 	"github.com/pterm/pterm/putils"
 )
@@ -133,7 +133,7 @@ func colorCmdUsage(conf *Supfile) {
 	for _, name := range conf.Targets.Names {
 		l("found target: %v", name)
 		cmds, _ := conf.Targets.Get(name)
-		l("found commands for target %v", dump.Format(cmds))
+		l("found commands for target %v", godump.DumpStr(cmds))
 		line := []string{name} // Target column
 		tail := []string{}
 		for _, cmd := range cmds {

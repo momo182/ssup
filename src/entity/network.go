@@ -5,7 +5,7 @@ import (
 	"os/exec"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/gookit/goutil/strutil"
 )
 
@@ -82,6 +82,6 @@ func (n *Network) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	n.IdentityFile = temp.IdentityFile
 
 	l("Unmarshalled network:")
-	l("%s", dump.Format(n))
+	l("%s", godump.DumpStr(n))
 	return nil
 }

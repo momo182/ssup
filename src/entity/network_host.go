@@ -3,7 +3,7 @@ package entity
 import (
 	"github.com/clok/kemba"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/samber/oops"
 )
 
@@ -85,7 +85,7 @@ func checkHostsForm(host string) NetworkHost {
 		"tubeNameEnd":   tubeNameEnd,
 	}
 	l("dump: DE462638-4225-44C6-852F-4F20AEEC2A0D")
-	l("%s", dump.Format(positions))
+	l("%s", godump.DumpStr(positions))
 
 	if passwordStart < 0 && tubeNameStart < 0 {
 		l("no pass and tube found")
@@ -142,7 +142,7 @@ func checkHostsForm(host string) NetworkHost {
 	}
 
 	spew.Config.MaxDepth = 5
-	l(dump.Format("dump: 3DB74440-E5D9-4BEE-89D8-9C4EEB1459A9", result))
+	l(godump.DumpStr("dump: 3DB74440-E5D9-4BEE-89D8-9C4EEB1459A9", result))
 	spew.Config.MaxDepth = SPEW_DEPTH
 	l("finished checking nets")
 	return result

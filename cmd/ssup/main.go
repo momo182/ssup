@@ -11,7 +11,7 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/gateway/namespace"
 	shellcheckService "github.com/momo182/ssup/src/gateway/shellcheck"
@@ -47,6 +47,7 @@ func init() {
 	flag.BoolVar(&initialArgs.ShowHelp, "help", false, "Show help")
 	flag.BoolVar(&initialArgs.TestConnections, "t", false, "Test connections")
 	flag.BoolVar(&initialArgs.TestConnections, "test", false, "Test connections")
+	flag.BoolVar(&initialArgs.Force, "z", false, "Force proceed execution even if some hosts unreachable")
 
 	logrus.SetFormatter(oopslogrus.NewOopsFormatter(&logrus.JSONFormatter{
 		PrettyPrint: true,
@@ -85,7 +86,7 @@ func main() {
 		os.Exit(1)
 	}
 	l("4685D4CC-E39C-49E7-A842-5ECEF446826A: supfile after inv process")
-	l("%s", dump.Format(conf))
+	l("%s", godump.DumpStr(conf))
 
 	l("parse network and commands to be run from args")
 	initData := entity.InitState{
@@ -111,7 +112,7 @@ func main() {
 		os.Exit(3)
 	default:
 		l("playbook is nil: negative checks passed")
-		l("%v", dump.Format(playbook))
+		l("%v", godump.DumpStr(playbook))
 	}
 
 	for _, play := range playbook.GetPlays() {
@@ -150,8 +151,15 @@ func main() {
 		app.Args = initialArgs
 
 		l("run all the commands in the given network")
+		runOrder := entity.RunOrder{
+			MakefileMode: isMakefileMode,
+			Network:      network,
+			Vars:         vars,
+			Commands:     commands,
+			Args:         *initialArgs,
+		}
 
-		err = app.Run(isMakefileMode, network, vars, commands...)
+		err = app.Run(runOrder)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(12)

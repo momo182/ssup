@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/lobby"
@@ -170,20 +170,20 @@ func (c *RemoteClient) Connect(host entity.NetworkHost) error {
 	authMethods := lobby.SetupAuthMethods(host)
 
 	l("creating config")
-	// l(dump.Format(host, authMethods))
+	// l(godump.DumpStr(host, authMethods))
 	config := ssh.ClientConfig{
 		User:            c.User,
 		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
-	// l(dump.Format(config))
+	// l(godump.DumpStr(config))
 
 	l("creating connect order")
 	connectOrder := entity.ConnectOrder{
 		Host:         host.Host,
 		ClientConfig: &config,
 	}
-	// l(dump.Format(connectOrder))
+	// l(godump.DumpStr(connectOrder))
 
 	c.ConnectOrder = connectOrder
 
@@ -223,7 +223,7 @@ func copyDistFolders(c *RemoteClient) error {
 		}
 	}
 
-	l(dump.Format(c.Inventory))
+	l(godump.DumpStr(c.Inventory))
 
 	// check if dist of ssupdist is present and if so copy it
 	// to remote host ~/.local/ssup/dist
@@ -376,7 +376,7 @@ func (c *RemoteClient) Run(task *entity.Task) error {
 
 	// actuall create command from task
 	command := c.buildRemoteCommand(*task)
-	l("built following command:\n%s", dump.Format(command))
+	l("built following command:\n%s", godump.DumpStr(command))
 
 	if err := sess.Start(command); err != nil {
 		return entity.ErrTask{Task: task, Reason: err.Error()}
@@ -494,11 +494,11 @@ func (c *RemoteClient) FetchEnvsWithTar() error {
 	remoteVars := fsutil.ReadAll(localPath)
 
 	l("dump: 21D2239C-7DCD-4044-B30C-FFB5254EB0C2")
-	l("%s", dump.Format(string(remoteVars)))
+	l("%s", godump.DumpStr(string(remoteVars)))
 
 	svc.ServiceRegistry.Namespaces.SetFromEnvString(string(remoteVars), c.Host)
 	debugData := svc.ServiceRegistry.Namespaces.Get(c.Host)
-	l("data:\n%s", dump.Format(debugData))
+	l("data:\n%s", godump.DumpStr(debugData))
 	return nil
 }
 

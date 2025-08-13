@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 )
 
@@ -35,7 +35,7 @@ func specialTargetMode(initData entity.InitState, helpMenu entity.HelpDisplayer)
 				fmt.Printf("ERR: C2E4EA9A-427E-47A5-A159-9E2DEA947903, failed to get affix from command")
 				os.Exit(41)
 			}
-			l("affix: %s", dump.Format(affix))
+			l("affix: %s", godump.DumpStr(affix))
 			netName := affix.AffixedNetwork
 			l("affixedName: %v", netName)
 			ensureNetworkExists(netName, conf, helpMenu)
@@ -43,7 +43,7 @@ func specialTargetMode(initData entity.InitState, helpMenu entity.HelpDisplayer)
 			if err != nil {
 				return nil, err
 			}
-			l("affixedNet:\n%s", dump.Format(affixedNet))
+			l("affixedNet:\n%s", godump.DumpStr(affixedNet))
 
 			// this should be common
 			l("parse CLI --env flag env vars, override values defined in Network env")
@@ -66,7 +66,7 @@ func specialTargetMode(initData entity.InitState, helpMenu entity.HelpDisplayer)
 
 	l("done affixes v1")
 	l("dump: 96714924-ADA3-4F95-AFB2-21EEB37C5047")
-	l("%s", dump.Format(result))
+	l("%s", godump.DumpStr(result))
 
 	return result, nil
 }

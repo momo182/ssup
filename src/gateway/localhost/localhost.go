@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/momo182/ssup/src/entity"
 	shellcheckService "github.com/momo182/ssup/src/gateway/shellcheck"
@@ -153,7 +153,7 @@ func copyDistFolders(c *LocalhostClient) error {
 		return errors.New("client inventory is nil")
 	}
 
-	l(dump.Format(c.Inventory))
+	l(godump.DumpStr(c.Inventory))
 
 	// check if dist of ssupdist is present and if so copy it
 	// to remote host ~/.local/ssup/dist
@@ -187,7 +187,7 @@ func copyDistFolders(c *LocalhostClient) error {
 func (c *LocalhostClient) Run(task *entity.Task) error { // FuncName: Run
 	l := kemba.New("gateway::localhost::Run").Printf
 
-	l(fmt.Sprintf("Running task: %s", dump.Format(task.Env)))
+	l(fmt.Sprintf("Running task: %s", godump.DumpStr(task.Env)))
 	if c.running {
 		return fmt.Errorf("Command already running")
 	}
@@ -204,7 +204,7 @@ func (c *LocalhostClient) Run(task *entity.Task) error { // FuncName: Run
 	// oldInvocation := []string{"bash", "-c", c.Env.AsExport()+task.Run}
 	newInvocation := c.buildLocalCommand(*task)
 	l("dump: B1DA9A9A-452B-4739-A8D8-15AEEA0D658D")
-	l(dump.Format(newInvocation))
+	l(godump.DumpStr(newInvocation))
 	cmd := exec.Command(c.GetShell(), "-c", newInvocation)
 	// cmd.Stdin = bytes.NewReader([]byte(newInvocation))
 	inPipe, err := cmd.StdinPipe()
@@ -295,7 +295,7 @@ func (c *LocalhostClient) Wait() error {
 		c.Host = "localhost"
 		lobby.ServiceRegistry.Namespaces.SetFromEnvString(string(envlines), c.Host)
 		data := lobby.ServiceRegistry.Namespaces.Get(c.Host)
-		l("data:\n%s", dump.Format(data))
+		l("data:\n%s", godump.DumpStr(data))
 	}
 
 	return err
@@ -420,7 +420,7 @@ func (c *LocalhostClient) GenerateOnRemote(data []byte, dest string) error {
 			Wrap(e)
 	}
 
-	debugData := dump.Format(map[string]any{
+	debugData := godump.DumpStr(map[string]any{
 		"src":  len(data),
 		"dest": dest,
 	})

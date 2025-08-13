@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 )
 
@@ -42,7 +42,7 @@ func (n *Namespace) Get(host string) entity.HostNamespace {
 
 	l("check if namespace exists for host: " + host)
 	result := n.hostStore[host]
-	l("result: %s", dump.Format(result))
+	l("result: %s", godump.DumpStr(result))
 	return result
 }
 
@@ -110,7 +110,7 @@ func (n *Namespace) SetFromEnvString(input string, host string) {
 
 		// split on " " and count parts
 		parts := strings.Split(line, " ")
-		l("parts: %s", dump.Format(parts))
+		l("parts: %s", godump.DumpStr(parts))
 		switch len(parts) {
 		case 1:
 			l("setting env for host: %s", host)
@@ -146,7 +146,7 @@ func (n *Namespace) SetFromEnvString(input string, host string) {
 			host = customNamespace
 		}
 
-		l("host store: %s", dump.Format(n))
+		l("host store: %s", godump.DumpStr(n))
 		if n.hostStore == nil {
 			l("host store is nil, better create new, should neve happen")
 		}

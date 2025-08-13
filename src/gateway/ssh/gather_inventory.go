@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 	"golang.org/x/crypto/ssh"
 )
@@ -38,7 +38,7 @@ func GatherInventory(remote *ssh.Client) (*entity.Inventory, error) {
 		return nil, fmt.Errorf("failed to run sh command: %v", err)
 	}
 	parts := strings.Split(string(archOutput), "^")
-	l(dump.Format(parts))
+	l(godump.DumpStr(parts))
 
 	inventory.Bash = false
 	inventory.Sh = false

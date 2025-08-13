@@ -10,7 +10,7 @@ import (
 	"unicode"
 
 	"github.com/clok/kemba"
-	"github.com/gookit/goutil/dump"
+	"github.com/goforj/godump"
 	"github.com/samber/oops"
 )
 
@@ -45,7 +45,7 @@ func ResolveShell(value string) (string, error) {
 			Wrap(e)
 	}
 
-	l("cmd dump:\n%s\nvalue: %s", dump.Format(cmd.Args), clean)
+	l("cmd dump:\n%s\nvalue: %s", godump.DumpStr(cmd.Args), clean)
 	return clean, nil
 }
 

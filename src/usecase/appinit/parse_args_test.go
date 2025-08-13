@@ -38,8 +38,6 @@ func TestOneCommandNoNetworks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// spew.Dump(playbook)
-
 	// check we had one play
 	expectedPlays := 1
 	foundPlays := len(playbook.GetPlays())
@@ -99,7 +97,7 @@ func TestTwoCommandsNoNetworks(t *testing.T) {
 	expectedPlays := 2
 	foundPlays := len(playbook.GetPlays())
 	for _, currPlay := range playbook.GetPlays() {
-		// spew.Dump(playbook)
+
 		if foundPlays != expectedPlays {
 			t.Errorf("Expected %d playbooks, found %d", expectedPlays, foundPlays)
 		}
@@ -153,7 +151,7 @@ func TestTwoCommandsAndNetwork(t *testing.T) {
 	}
 	expectedPlays := 1
 	foundPlays := len(playbook.GetPlays())
-	// spew.Dump(playbook)
+
 	if foundPlays != expectedPlays {
 		t.Errorf("Expected %d playbooks, found %d", expectedPlays, foundPlays)
 	}
@@ -194,7 +192,7 @@ func TestTwoCmdsAndNet2(t *testing.T) {
 	}
 	expectedPlays := 1
 	foundPlays := len(playbook.GetPlays())
-	// spew.Dump(playbook)
+
 	if foundPlays != expectedPlays {
 		t.Errorf("Expected %d playbooks, found %d", expectedPlays, foundPlays)
 	}
@@ -222,7 +220,6 @@ func TestTargetAndNoAffix(t *testing.T) {
 	}
 	expectedPlays := 1
 	foundPlays := len(playbook.GetPlays())
-	// spew.Dump(playbook)
 	if foundPlays != expectedPlays {
 		t.Errorf("Expected %d playbooks, found %d", expectedPlays, foundPlays)
 	}
@@ -251,7 +248,6 @@ func TestTargetAndAffix(t *testing.T) {
 	}
 	expectedPlays := 2
 	foundPlays := len(playbook.GetPlays())
-	// spew.Dump(playbook)
 	l("Expected %d playbooks, found %d", expectedPlays, foundPlays)
 
 	if foundPlays != expectedPlays {
