@@ -1,0 +1,10 @@
+#!/bin/bash
+
+export SUP_NETWORK="t"; 
+export NEW_USER="i.laryushkin"; 
+export PASSWORD=".J0b1B3FhRlOl6e17ayUjV1ZNk.pLl/YB/jAAjV9V.i6pwZW.dnFE7PrL9DzL9lEs0";
+export KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBA6Jo2m9WfWg9xnDLm/kpfSHoNsRcwI9gpc2jGzLa8M i.laryushkin@bi.zone";
+export SUP_USER="k.pechenenko";
+export SUP_HOST="admin@10.3.147.205"; 
+export SUP_TIME="2025-08-13T09:20:20Z"; 
+export SUP_ENV='-e SUP_USER="k.pechenenko" -e SUP_NETWORK="t" -e SUP_TIME="2025-08-13T09:20:20Z" -e NEW_USER="i.laryushkin" -e PASSWORD=".J0b1B3FhRlOl6e17ayUjV1ZNk.pLl/YB/jAAjV9V.i6pwZW.dnFE7PrL9DzL9lEs0" -e KEY="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBA6Jo2m9WfWg9xnDLm/kpfSHoNsRcwI9gpc2jGzLa8M i.laryushkin@bi.zone" -e FOO="BAR""; export FOO="BAR';

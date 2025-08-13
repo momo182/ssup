@@ -20,7 +20,7 @@ func (e EnvVar) String() string {
 
 // AsExport returns the environment variable as a bash export statement
 func (e EnvVar) AsExport() string {
-	return `export ` + e.Key + `="` + e.Value + `";`
+	return `export ` + e.Key + `='` + e.Value + `';`
 }
 
 // EnvList is a list of environment variables that maps to a YAML map,
@@ -103,16 +103,14 @@ func (e *EnvList) AsExport() string {
 	return exports
 }
 
-// // RemoveEnvVarByKey removes an EnvVar from EnvList by key.
-// // It returns true if the variable was found and removed, or false otherwise.
-// func (list *EnvList) RemoveEnvVarByKey(key string) bool {
-// 	result := false
-// 	for i, envVar := range *list {
-// 		if envVar.Key == key {
-// 			// Remove the EnvVar by slicing out the element at index i
-// 			*list = append((*list)[:i], (*list)[i+1:]...)
-// 			result = true // Key was found and removed
-// 		}
-// 	}
-// 	return result // Key not found
-// }
+// RemoveEnvVarByKey removes an EnvVar from EnvList by key.
+// It returns true if the variable was found and removed, or false otherwise.
+func (e *EnvList) RemoveEnvVarByKey(key string) bool {
+	result := false
+	for _, envVar := range e.store {
+		if envVar == key {
+			delete(e.store, key)
+		}
+	}
+	return result // Key not found
+}

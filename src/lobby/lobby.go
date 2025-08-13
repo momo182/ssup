@@ -138,8 +138,12 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 			log.Panic("failed to generate _ssup_run", err)
 		}
 
-		l("generating _ssup_env: '%s'", Env.AsExport())
-		if err := c.GenerateOnRemote([]byte(Env.AsExport()), envFile); err != nil {
+		Env.RemoveEnvVarByKey("SUP_ENV")
+		env := Env.AsExport()
+		env = strings.ReplaceAll(env, ";", ";\n")
+
+		l("generating _ssup_env: '%s'", godump.DumpStr(env))
+		if err := c.GenerateOnRemote([]byte(env), envFile); err != nil {
 			log.Panic("failed to generate _ssup_env", err)
 		}
 
