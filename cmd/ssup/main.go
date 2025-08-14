@@ -14,17 +14,16 @@ import (
 	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/gateway/namespace"
+	"github.com/momo182/ssup/src/gateway/outrig"
 	shellcheckService "github.com/momo182/ssup/src/gateway/shellcheck"
 	serviceLobby "github.com/momo182/ssup/src/lobby"
 	"github.com/momo182/ssup/src/usecase"
 	"github.com/momo182/ssup/src/usecase/appinit"
+	_ "github.com/outrigdev/outrig/autoinit"
 	oopslogrus "github.com/samber/oops/loggers/logrus"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
-
-	"github.com/outrigdev/outrig"
-	_ "github.com/outrigdev/outrig/autoinit"
 )
 
 var initialArgs *entity.InitialArgs = &entity.InitialArgs{}
@@ -64,10 +63,10 @@ func init() {
 
 func main() {
 	l := kemba.New("main").Printf
-	p := outrig.NewWatch("requests").WithTags("main", "supfile")
-	pusher := p.AsGoFmt().ForPush()
 	flag.Parse()
 	initialArgs.CommandArgs = flag.Args()
+
+	outrig.Push("main_command_args", initialArgs)
 
 	if initialArgs.ShowHelp {
 		fmt.Fprintln(os.Stderr, entity.ErrUsage, "\n\nOptions:")
@@ -92,14 +91,13 @@ func main() {
 	}
 	l("4685D4CC-E39C-49E7-A842-5ECEF446826A: supfile after inv process")
 	l("%s", spew.Sdump(conf))
+	outrig.Push("main_parsed_supfile", conf)
 
 	l("parse network and commands to be run from args")
 	initData := entity.InitState{
 		Conf:        conf,
 		InitialArgs: initialArgs,
 	}
-
-	pusher.Push(initData)
 
 	// MOD here we need to return not just filled single network
 	// as it was before
@@ -121,10 +119,6 @@ func main() {
 		l("playbook is nil: negative checks passed")
 		l("%v", godump.DumpStr(playbook))
 	}
-
-	p.AsStringer().PollFunc(func() string {
-		return "someval"
-	})
 
 	for _, play := range playbook.GetPlays() {
 		isMakefileMode := playbook.IsMakefileMode()
@@ -176,8 +170,8 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	println("press ctrl+c")
-	select {}
+	// println("press ctrl+c")
+	// select {}
 }
 
 func unpackInventories(conf *entity.Supfile) error {
@@ -195,6 +189,7 @@ func unpackInventories(conf *entity.Supfile) error {
 		}
 		result[name] = network
 	}
+	outrig.Push("unpackInventories", result)
 
 	conf.Networks.Nets = result
 

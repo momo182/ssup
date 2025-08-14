@@ -17,11 +17,10 @@ import (
 	"github.com/goware/prefixer"
 	"github.com/momo182/ssup/src/entity"
 	clientLocal "github.com/momo182/ssup/src/gateway/localhost"
+	"github.com/momo182/ssup/src/gateway/outrig"
 	clientSSH "github.com/momo182/ssup/src/gateway/ssh"
-	"github.com/outrigdev/outrig"
 	"github.com/pkg/errors"
 	"github.com/samber/oops"
-	sf "github.com/wissance/stringFormatter"
 )
 
 type Stackup struct {
@@ -44,8 +43,6 @@ func NewStackup(conf *entity.Supfile) *Stackup {
 //	to multiple smaller methods.
 func (sup *Stackup) Run(runOrder entity.RunOrder) error {
 	l := kemba.New("uc::Stackup::Run").Printf
-	pusher := outrig.NewWatch("uc::Stackup::Run").WithTags("usecase", "run").AsJSON().ForPush()
-	pusher.Push(runOrder)
 
 	isMakefileMode := runOrder.MakefileMode
 	network := runOrder.Network
@@ -81,10 +78,8 @@ func (sup *Stackup) Run(runOrder entity.RunOrder) error {
 	l(godump.DumpStr(clients))
 
 	for _, cmd := range commands {
-		cmd.Run = processApLinks(cmd.Run, *network)
 		l("processing command:\n%v", godump.DumpStr(cmd))
-		pusher.Push("after ap links processed:")
-		pusher.Push(cmd)
+		outrig.Push("ap_macro_processed", cmd)
 		tasks, err := CreateTasks(cmd, clients, envVars, sup.Args)
 		if err != nil {
 			return sup.WrapError("75F613AD-0E35-4FA0-A9D5-5A44B0C4EB08", "creating tasks failed", err)
@@ -105,56 +100,6 @@ func (sup *Stackup) Run(runOrder entity.RunOrder) error {
 	}
 
 	return nil
-}
-
-// processApLinks will scanthrough lines and replace
-// the `#ap://` links with the actual content.
-func processApLinks(rawCommand string, network entity.Network) string {
-	l := kemba.New("entity::command::process_source_links").Printf
-	p := outrig.NewWatch("entity::command::process_source_links").WithTags("usecase", "run", "processApLinks")
-	pusher := p.AsGoFmt().ForPush()
-	rawLines := strings.Split(rawCommand, "\n")
-	result := []byte{}
-
-	for _, line := range rawLines {
-		if strings.HasPrefix(line, entity.APDirective) {
-			l("matched line: %s", line)
-			file := strings.TrimPrefix(line, entity.APDirective)
-			if strings.Contains(file, "#") {
-				// must have a # comment behind the value
-				// will have to strip the # comment
-				// by searching for the # comment location and
-				// trimming the length of the value
-				location := strings.Index(file, "#")
-				file = file[:location]
-			}
-			hosts := ""
-			login := ""
-			passw := ""
-
-			for _, host := range network.Hosts {
-				parts := strings.Split(host.Host, "@")
-				if len(parts) != 2 {
-					fmt.Println("failed to split host")
-					os.Exit(1)
-				}
-				hostName := parts[1]
-				hosts = hosts + hostName + ","
-			}
-
-			pusher.Push(map[string]any{
-				"network": network,
-			})
-
-			newLine := sf.Format("ansible-playbook -i {0} -e \"ansible_user={1}\" -e \"ansible_password={2}\" -e \"ansible_become_password={2}\" {3}", hosts, login, passw, file)
-			l("after:\n%s", "'"+newLine+"'")
-
-			result = append(result, []byte(newLine+"\n")...)
-			continue
-		}
-		result = append(result, []byte(line+"\n")...)
-	}
-	return string(result)
 }
 
 // Helper function to wrap errors consistently.

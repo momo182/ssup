@@ -1,12 +1,15 @@
 package entity
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/clok/kemba"
 	"github.com/goforj/godump"
 	"github.com/gookit/goutil/strutil"
+	"github.com/momo182/ssup/src/gateway/outrig"
 )
 
 // Network is group of hosts with extra custom env vars.
@@ -50,6 +53,14 @@ func (n Network) ParseInventory() ([]NetworkHost, error) {
 
 	for _, line := range lines {
 		h := checkHostsForm(line)
+		id := fmt.Sprintf("network_parse_inventory_host_%s", h.Host)
+
+		if h.User == "" && strings.Contains(h.Host, "@") {
+			parts := strings.Split(h.Host, "@")
+			h.User = parts[0]
+		}
+
+		outrig.Push(id, h)
 		hostsObjects = append(hostsObjects, h)
 	}
 	return hostsObjects, nil
@@ -80,6 +91,8 @@ func (n *Network) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	n.Bastion = temp.Bastion
 	n.User = temp.User
 	n.IdentityFile = temp.IdentityFile
+
+	outrig.Push("network_yaml", n)
 
 	l("Unmarshalled network:")
 	l("%s", godump.DumpStr(n))
