@@ -78,9 +78,8 @@ func processSourceLinks(rawCommand string) string {
 	l := kemba.New("entity -> process_source_links").Printf
 	rawLines := strings.Split(rawCommand, "\n")
 	result := []byte{}
-	count := 0
 
-	for _, line := range rawLines {
+	for count, line := range rawLines {
 		if strings.HasPrefix(line, SourceDirective) {
 			l("matched line: %s", line)
 			file := strings.TrimPrefix(line, SourceDirective)
@@ -98,7 +97,7 @@ func processSourceLinks(rawCommand string) string {
 			// drop shebangs
 			fl := strutil.FirstLine(data)
 			if (strings.HasPrefix(fl, "#!/")) && (count == 0) {
-				l("$$$$$$$$$$$$$$$$$$$$$$$$$$$$ shebang found $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+				l("shebang found!!!")
 				doSkip = true
 			}
 			l("before:\n%s", "'"+strutil.FirstLine(data)+"'")

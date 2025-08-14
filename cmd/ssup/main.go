@@ -64,7 +64,8 @@ func init() {
 
 func main() {
 	l := kemba.New("main").Printf
-	pusher := outrig.NewWatch("requests").WithTags("main", "supfile").AsJSON().ForPush()
+	p := outrig.NewWatch("requests").WithTags("main", "supfile")
+	pusher := p.AsGoFmt().ForPush()
 	flag.Parse()
 	initialArgs.CommandArgs = flag.Args()
 
@@ -97,6 +98,7 @@ func main() {
 		Conf:        conf,
 		InitialArgs: initialArgs,
 	}
+
 	pusher.Push(initData)
 
 	// MOD here we need to return not just filled single network
@@ -119,6 +121,10 @@ func main() {
 		l("playbook is nil: negative checks passed")
 		l("%v", godump.DumpStr(playbook))
 	}
+
+	p.AsStringer().PollFunc(func() string {
+		return "someval"
+	})
 
 	for _, play := range playbook.GetPlays() {
 		isMakefileMode := playbook.IsMakefileMode()
@@ -167,9 +173,11 @@ func main() {
 		err = app.Run(runOrder)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
-			os.Exit(12)
+			os.Exit(1)
 		}
 	}
+	println("press ctrl+c")
+	select {}
 }
 
 func unpackInventories(conf *entity.Supfile) error {
