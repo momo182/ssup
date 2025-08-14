@@ -22,6 +22,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+
+	"github.com/outrigdev/outrig"
+	_ "github.com/outrigdev/outrig/autoinit"
 )
 
 var initialArgs *entity.InitialArgs = &entity.InitialArgs{}
@@ -61,6 +64,7 @@ func init() {
 
 func main() {
 	l := kemba.New("main").Printf
+	pusher := outrig.NewWatch("requests").WithTags("main", "supfile").AsJSON().ForPush()
 	flag.Parse()
 	initialArgs.CommandArgs = flag.Args()
 
@@ -93,6 +97,7 @@ func main() {
 		Conf:        conf,
 		InitialArgs: initialArgs,
 	}
+	pusher.Push(initData)
 
 	// MOD here we need to return not just filled single network
 	// as it was before
