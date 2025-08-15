@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/clok/kemba"
-	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 	"golang.org/x/crypto/ssh"
 )
@@ -17,66 +16,41 @@ func GatherInventory(remote *ssh.Client) (*entity.Inventory, error) {
 
 	l("Gathering inventory on %v", remote.RemoteAddr())
 
-	invCmd := []string{}
-	invCmd = append(invCmd, inventory.DetectArchCommand()...)
-	invCmd = append(invCmd, ";")
-	invCmd = append(invCmd, []string{"echo", "-n", "^"}...)
-	invCmd = append(invCmd, ";")
-	invCmd = append(invCmd, inventory.CheckOsTypeCommand()...)
-	invCmd = append(invCmd, ";")
-	invCmd = append(invCmd, []string{"echo", "-n", "^"}...)
-	invCmd = append(invCmd, ";")
-	invCmd = append(invCmd, inventory.CheckBashCommand()...)
-	invCmd = append(invCmd, ";")
-	invCmd = append(invCmd, []string{"echo", "-n", "^"}...)
-	invCmd = append(invCmd, ";")
-	invCmd = append(invCmd, inventory.CheckShCommand()...)
-
-	l("check system arch: %v", invCmd)
-	archOutput, err := runRemoteCommand(remote, invCmd)
+	// check arch command
+	archCmd := inventory.DetectArchCommand()
+	l("check system arch: %v", archCmd)
+	archOutput, err := runRemoteCommand(remote, archCmd)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run sh command: %v", err)
 	}
-	parts := strings.Split(string(archOutput), "^")
-	l(godump.DumpStr(parts))
+	inventory.Arch = strings.TrimSpace(string(archOutput))
 
-	inventory.Bash = false
-	inventory.Sh = false
-	inventory.Arch = parts[0]
-	inventory.OsType = parts[1]
-	if parts[2] != "" {
-		inventory.Bash = true
+	// check os type command
+	osTypeCmd := inventory.CheckOsTypeCommand()
+	l("check os type: %v", osTypeCmd)
+	osTypeOutput, err := runRemoteCommand(remote, osTypeCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run sh command: %v", err)
 	}
-	if parts[3] != "" {
-		inventory.Sh = true
+	inventory.OsType = strings.TrimSpace(string(osTypeOutput))
+
+	// Check bash command
+	l("check bash installation: %v", inventory.CheckBashCommand())
+	bashCmd := inventory.CheckBashCommand()
+	bashOutput, err := runRemoteCommand(remote, bashCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run bash command: %v", err)
 	}
+	inventory.Bash = strings.TrimSpace(string(bashOutput)) != ""
 
-	// // check os type command
-	// osTypeCmd := inventory.CheckOsTypeCommand()
-	// l("check os type: %v", osTypeCmd)
-	// osTypeOutput, err := runRemoteCommand(remote, osTypeCmd)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to run sh command: %v", err)
-	// }
-	// inventory.OsType = strings.TrimSpace(string(osTypeOutput))
-
-	// // Check bash command
-	// l("check bash installation: %v", inventory.CheckBashCommand())
-	// bashCmd := inventory.CheckBashCommand()
-	// bashOutput, err := runRemoteCommand(remote, bashCmd)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to run bash command: %v", err)
-	// }
-	// inventory.Bash = strings.TrimSpace(string(bashOutput)) != ""
-
-	// // Check sh command
-	// l("check sh installation: %v", inventory.CheckShCommand())
-	// shCmd := inventory.CheckShCommand()
-	// shOutput, err := runRemoteCommand(remote, shCmd)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to run sh command: %v", err)
-	// }
-	// inventory.Sh = strings.TrimSpace(string(shOutput)) != ""
+	// Check sh command
+	l("check sh installation: %v", inventory.CheckShCommand())
+	shCmd := inventory.CheckShCommand()
+	shOutput, err := runRemoteCommand(remote, shCmd)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run sh command: %v", err)
+	}
+	inventory.Sh = strings.TrimSpace(string(shOutput)) != ""
 
 	// check home command
 	homeCmd := inventory.CheckHomeCommand()
@@ -95,6 +69,7 @@ func GatherInventory(remote *ssh.Client) (*entity.Inventory, error) {
 		return nil, fmt.Errorf("failed to run sh command: %v", err)
 	}
 	inventory.User = strings.TrimSpace(string(userOutput))
+
 	return inventory, nil
 }
 
