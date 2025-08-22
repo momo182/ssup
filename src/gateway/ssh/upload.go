@@ -23,10 +23,17 @@ func (c *RemoteClient) Upload(localPath, remotePath string) error {
 	l("uploading files with UI feedback")
 
 	// Replace ~ with home directory.
-	l("inspect if PATH starts with ~/")
+	l("inspect if remote PATH starts with ~/")
 	if strings.HasPrefix(remotePath, "~/") {
 		l("yes, it does, removing the ~/")
 		remotePath = strings.Replace(remotePath, "~/", "", 1)
+	}
+
+	l("inspect if local PATH starts with ~/")
+	if strings.HasPrefix(localPath, "~/") {
+		l("yes, it does, replacing the ~/")
+		homeDir := os.Getenv("HOME")
+		localPath = strings.Replace(localPath, "~/", homeDir+"/", 1)
 	}
 
 	fmt.Println("+ upload:")

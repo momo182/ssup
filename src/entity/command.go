@@ -79,7 +79,7 @@ func processSourceLinks(rawCommand string) string {
 	rawLines := strings.Split(rawCommand, "\n")
 	result := []byte{}
 
-	for count, line := range rawLines {
+	for _, line := range rawLines {
 		if strings.HasPrefix(line, SourceDirective) {
 			l("matched line: %s", line)
 			file := strings.TrimPrefix(line, SourceDirective)
@@ -92,20 +92,6 @@ func processSourceLinks(rawCommand string) string {
 				file = file[:location]
 			}
 			data := fsutil.ReadString(file)
-			doSkip := false
-
-			// drop shebangs
-			fl := strutil.FirstLine(data)
-			if (strings.HasPrefix(fl, "#!/")) && (count == 0) {
-				l("shebang found!!!")
-				doSkip = true
-			}
-			l("before:\n%s", "'"+strutil.FirstLine(data)+"'")
-
-			index := strings.Index(data, "\n")
-			if doSkip {
-				data = data[index+1:]
-			}
 			l("after:\n%s", "'"+strutil.FirstLine(data)+"'")
 
 			result = append(result, []byte(data+"\n")...)
