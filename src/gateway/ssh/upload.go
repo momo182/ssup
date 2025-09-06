@@ -77,6 +77,10 @@ func (c *RemoteClient) GenerateOnRemote(data []byte, remotePath string) error {
 	l("uploading files without any UI feedback")
 	localPath, err := os.CreateTemp("", "ssup_temp_*_data")
 
+	if localPath == nil {
+		return errors.New("could not create temp file")
+	}
+
 	defer func() {
 		err := localPath.Close()
 		if err != nil {
@@ -111,6 +115,16 @@ func (c *RemoteClient) GenerateOnRemote(data []byte, remotePath string) error {
 	client, err := connectSFTP(c.GetConnection())
 	if err != nil {
 		return err
+	}
+	baseDir := filepath.Dir(remotePath)
+	err = client.MkdirAll(baseDir)
+	if err != nil {
+		// if !strings.Contains(err.Error(), "file exists") {
+		// 	return err
+		// }
+		fmt.Println("skipping host: " + c.GetHost() + ", disk is full")
+		return nil
+
 	}
 	// defer client.Close()
 

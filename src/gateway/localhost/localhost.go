@@ -359,52 +359,108 @@ func (c *LocalhostClient) Signal(sig os.Signal) error {
 func (c *LocalhostClient) Upload(src, dst string) error {
 	l := kemba.New("gw::local::upload").Printf
 	l("kinda uploading %s to %s", src, dst)
-	l("but its just a cp call")
+	l("but its just a copy operation")
 
-	var copyCommand *exec.Cmd
-	copyCommand = exec.Command("cp", "-R", src, dst)
-
-	copyCommand.Stdout = os.Stdout
-	copyCommand.Stderr = os.Stderr
-
-	e := copyCommand.Start()
-	if e != nil {
-		l("failed to run command: %v", e)
-		return e
-	}
-
-	e = copyCommand.Wait()
-	if e != nil {
-		l("failed to wait for command: %v", e)
-		return e
-	}
-
-	return nil
+	return c.copyPath(src, dst, l)
 }
 
 func (c *LocalhostClient) Download(src, dst string, silent bool, _ bool) error {
 	l := kemba.New("gw::local::download").Printf
 	l("kinda downloading %s to %s", src, dst)
-	l("but its just a cp call")
+	l("but its just a copy operation")
 
-	var copyCommand *exec.Cmd
-	copyCommand = exec.Command("cp", "-R", src, dst)
+	return c.copyPath(src, dst, l)
+}
 
-	copyCommand.Stdout = os.Stdout
-	copyCommand.Stderr = os.Stderr
-
-	e := copyCommand.Start()
-	if e != nil {
-		l("failed to run command: %v", e)
-		return e
+// copyPath handles the actual file/directory copying logic
+func (c *LocalhostClient) copyPath(src, dst string, l func(format string, args ...interface{})) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		l("failed to stat source: %v", err)
+		return err
 	}
 
-	e = copyCommand.Wait()
-	if e != nil {
-		l("failed to wait for command: %v", e)
-		return e
+	if srcInfo.IsDir() {
+		return c.copyDirectory(src, dst, l)
+	}
+	return c.copyFile(src, dst, l)
+}
+
+// copyFile copies a single file from src to dst
+func (c *LocalhostClient) copyFile(src, dst string, l func(format string, args ...interface{})) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		l("failed to open source file: %v", err)
+		return err
+	}
+	defer sourceFile.Close()
+
+	// Create destination directory if it doesn't exist
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		l("failed to create destination directory: %v", err)
+		return err
 	}
 
+	destFile, err := os.Create(dst)
+	if err != nil {
+		l("failed to create destination file: %v", err)
+		return err
+	}
+	defer destFile.Close()
+
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		l("failed to copy file content: %v", err)
+		return err
+	}
+
+	// Preserve file mode
+	srcInfo, err := os.Stat(src)
+	if err == nil {
+		if err := os.Chmod(dst, srcInfo.Mode()); err != nil {
+			l("failed to preserve file mode: %v", err)
+			// Non-fatal error, continue
+		}
+	}
+
+	l("successfully copied file %s to %s", src, dst)
+	return nil
+}
+
+// copyDirectory recursively copies a directory from src to dst
+func (c *LocalhostClient) copyDirectory(src, dst string, l func(format string, args ...interface{})) error {
+	// Create destination directory
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(dst, srcInfo.Mode()); err != nil {
+		l("failed to create destination directory: %v", err)
+		return err
+	}
+
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		l("failed to read source directory: %v", err)
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			if err := c.copyDirectory(srcPath, dstPath, l); err != nil {
+				return err
+			}
+		} else {
+			if err := c.copyFile(srcPath, dstPath, l); err != nil {
+				return err
+			}
+		}
+	}
+
+	l("successfully copied directory %s to %s", src, dst)
 	return nil
 }
 

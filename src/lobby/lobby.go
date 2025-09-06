@@ -135,7 +135,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 	generateBaselineStartSet := func() {
 		l("generating _ssup_run: '%s'", commandsToRun)
 		if err := c.GenerateOnRemote([]byte(commandsToRun), mainScriptFile); err != nil {
-			log.Panic("failed to generate _ssup_run", err)
+			log.Panic("failed to generate _ssup_run: ", err)
 		}
 
 		Env.RemoveEnvVarByKey("SUP_ENV")

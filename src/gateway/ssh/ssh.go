@@ -555,7 +555,7 @@ func (c *RemoteClient) Prefix() (string, int) {
 		hostName = c.Host[:strings.Index(c.Host, ":")]
 	}
 
-	host := c.User + "@" + hostName + " | "
+	host := c.User + "@" + hostName + "\t| "
 	l("host: %s", host)
 	return c.Color + host + entity.ResetColor, len(host)
 }
