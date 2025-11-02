@@ -14,6 +14,7 @@ import (
 	"github.com/clok/kemba"
 	"github.com/goforj/godump"
 	"github.com/gookit/goutil/fsutil"
+	"github.com/mitchellh/go-homedir"
 	"github.com/momo182/ssup/src/entity"
 	shellcheckService "github.com/momo182/ssup/src/gateway/shellcheck"
 	"github.com/momo182/ssup/src/lobby"
@@ -358,6 +359,14 @@ func (c *LocalhostClient) Signal(sig os.Signal) error {
 
 func (c *LocalhostClient) Upload(src, dst string) error {
 	l := kemba.New("gw::local::upload").Printf
+	src, err := homedir.Expand(src)
+	if err != nil {
+		return err
+	}
+	dst, err = homedir.Expand(dst)
+	if err != nil {
+		return err
+	}
 	l("kinda uploading %s to %s", src, dst)
 	l("but its just a copy operation")
 
@@ -366,6 +375,14 @@ func (c *LocalhostClient) Upload(src, dst string) error {
 
 func (c *LocalhostClient) Download(src, dst string, silent bool, _ bool) error {
 	l := kemba.New("gw::local::download").Printf
+	src, err := homedir.Expand(src)
+	if err != nil {
+		return err
+	}
+	dst, err = homedir.Expand(dst)
+	if err != nil {
+		return err
+	}
 	l("kinda downloading %s to %s", src, dst)
 	l("but its just a copy operation")
 
