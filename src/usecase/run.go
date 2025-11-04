@@ -413,7 +413,7 @@ func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([
 
 	results := make(chan result, len(network.Hosts))
 
-	// Запускаем горутины для подключения
+	// do the connections
 	for i := range network.Hosts {
 		go func(host entity.NetworkHost) {
 			var client entity.ClientFacade
@@ -470,7 +470,7 @@ func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([
 		}(network.Hosts[i])
 	}
 
-	// Собираем результаты
+	// gather results
 	clients := []entity.ClientFacade{}
 	errors := []string{}
 

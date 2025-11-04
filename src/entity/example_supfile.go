@@ -38,7 +38,7 @@ commands:
 
   setup:
     desc: move footgbot to right place on remote
-	sudo: true
+    sudo: true
     run: |
       rm -rfv ~/footgbot/footgbot
       mv -v ~/footgbot ~/footgbot/footgbot

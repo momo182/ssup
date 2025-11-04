@@ -73,7 +73,7 @@ func (c *Commands) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // processSourceLinks will scanthrough lines and replace
-// the `#source://` links with the actual content.
+// the `#include://` links with the actual content.
 func processSourceLinks(rawCommand string) string {
 	l := kemba.New("entity -> process_source_links").Printf
 	rawLines := strings.Split(rawCommand, "\n")
