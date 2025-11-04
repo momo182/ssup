@@ -10,6 +10,7 @@ import (
 	"github.com/momo182/ssup/src/entity"
 
 	"github.com/goforj/godump"
+	"github.com/google/uuid"
 	"github.com/momo182/ssup/src/gateway/localhost"
 	"github.com/pkg/errors"
 	"github.com/samber/oops"
@@ -44,10 +45,13 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 			return nil, err
 		}
 
+		u := uuid.New()
+
 		task := entity.Task{
 			Run:  string(data),
 			TTY:  cmd.Stdin,
 			Sudo: cmd.Sudo,
+			Id:   u.String(),
 		}
 
 		decorateTaskDetails(args, &task, cmd)
@@ -76,11 +80,13 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 			Host: "localhost",
 		}
 		local.Connect(localHost)
+		u := uuid.New()
 		task := &entity.Task{
 			Run:     cmd.Local,
 			Clients: []entity.ClientFacade{local},
 			TTY:     cmd.Stdin,
 			Env:     env,
+			Id:      u.String(),
 		}
 
 		AppendCommandEnvsToTask(cmd, task)
@@ -91,11 +97,13 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 	// Remote command.
 	l("check if remote command")
 	if cmd.Run != "" {
+		u := uuid.New()
 		task := entity.Task{
 			Run:  cmd.Run,
 			TTY:  cmd.Stdin,
 			Sudo: cmd.Sudo,
 			Env:  env,
+			Id:   u.String(),
 		}
 
 		AppendCommandEnvsToTask(cmd, &task)

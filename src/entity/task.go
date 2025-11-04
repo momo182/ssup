@@ -12,4 +12,6 @@ type Task struct {
 	TTY     bool
 	Sudo    bool `yaml:"sudo" default:"false"`
 	Env     EnvList
+	// num     int
+	Id string
 }

@@ -173,6 +173,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 		"ssup_commands":     injectedCommands,
 		"removal_mask":      entity.SSUP_WORK_FOLDER + "_ssup_*",
 		"shell":             shell,
+		"cmd_id":            task.Id,
 	}
 
 	l(godump.DumpStr(data))
@@ -185,7 +186,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 			"cat {hashed_pass_file} "+
 				"| sudo -S {shell} -c \"rm {hashed_pass_file} "+
 				"&& export PATH=\"{home_folder}/.local/ssup/dist:$PATH\""+
-				"&& echo \"\" && source {env_file} "+
+				"&& source {env_file} && echo '## command: {cmd_id}'"+
 				// ^^^^^^ this needs to exist to make sudo prompt go to next line
 				"&& chmod +x {main_script} && {main_script}"+
 				"|| export SSUP_TASK_FAIL=$?; rm -rf {home_folder}/{removal_mask}; if [ -n \"$SSUP_TASK_FAIL\" ];then exit $SSUP_TASK_FAIL;fi\"",
@@ -200,7 +201,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 
 	default:
 		l("wrapping command into normal block:")
-		command = sf.FormatComplex("{shell} -c 'export PATH=\"{home_folder}/.local/ssup/dist:$PATH\" && source {env_file} && chmod +x {main_script} && {main_script} || export SSUP_TASK_FAIL=$?; rm -rf {home_folder}/{removal_mask}; if [ -n \"$SSUP_TASK_FAIL\" ];then exit $SSUP_TASK_FAIL;fi'", data)
+		command = sf.FormatComplex("{shell} -c 'export PATH=\"{home_folder}/.local/ssup/dist:$PATH\" && source {env_file} && chmod +x {main_script} && echo \"## command: {cmd_id}\" && {main_script} || export SSUP_TASK_FAIL=$?; rm -rf {home_folder}/{removal_mask}; if [ -n \"$SSUP_TASK_FAIL\" ];then exit $SSUP_TASK_FAIL;fi'", data)
 		generateBaselineStartSet()
 	}
 

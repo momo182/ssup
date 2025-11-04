@@ -15,7 +15,6 @@ import (
 	"github.com/goforj/godump"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/lobby"
 	svc "github.com/momo182/ssup/src/lobby"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
@@ -23,24 +22,24 @@ import (
 
 // RemoteClient is a wrapper over the SSH connection/sessions.
 type RemoteClient struct {
-	conn              *ssh.Client
-	sess              *ssh.Session
-	ConnectOrder      entity.ConnectOrder
-	User              string
-	Host              string
-	Password          string
-	remoteStdin       io.WriteCloser
-	remoteStdout      io.Reader
-	remoteStderr      io.Reader
-	connOpened        bool
-	sessOpened        bool
-	running           bool
-	Env               *entity.EnvList
-	Color             string
-	tube              string
-	Inventory         *entity.Inventory
-	encryptedPassword []byte
-	encryption        string
+	conn         *ssh.Client
+	sess         *ssh.Session
+	ConnectOrder entity.ConnectOrder
+	User         string
+	Host         string
+	Password     string
+	remoteStdin  io.WriteCloser
+	remoteStdout io.Reader
+	remoteStderr io.Reader
+	connOpened   bool
+	sessOpened   bool
+	running      bool
+	Env          *entity.EnvList
+	Color        string
+	nameSpace    string
+	Inventory    *entity.Inventory
+	// encryptedPassword []byte
+	// encryption        string
 }
 
 // init initializes the package.
@@ -73,7 +72,7 @@ func (e ErrInv) Error() string {
 }
 
 func (c *RemoteClient) String() string {
-	return fmt.Sprintf("RemoteClient{Host: %v, Tube: %v}", c.Host, c.tube)
+	return fmt.Sprintf("RemoteClient{Host: %v, Tube: %v}", c.Host, c.nameSpace)
 }
 
 // GetHost returns the host of the SSHClient.
@@ -83,7 +82,7 @@ func (c *RemoteClient) GetHost() string {
 
 // GetTube returns the tube of the SSHClient.
 func (c RemoteClient) GetTube() string {
-	return c.tube
+	return c.nameSpace
 }
 
 // GetConnection returns the client configuration of the SSHClient.
@@ -104,7 +103,7 @@ func (c *RemoteClient) SetConnection(client *ssh.Client) {
 
 // SetTube sets the tube of the SSHClient.
 func (c *RemoteClient) SetTube(name string) {
-	c.tube = name
+	c.nameSpace = name
 }
 
 // GetPassword returns the password of the SSHClient.
@@ -167,7 +166,7 @@ func (c *RemoteClient) Connect(host entity.NetworkHost) error {
 	}
 
 	l("checking password auth")
-	authMethods := lobby.SetupAuthMethods(host)
+	authMethods := svc.SetupAuthMethods(host)
 
 	l("creating config")
 	// l(godump.DumpStr(host, authMethods))
@@ -256,7 +255,7 @@ func (c *RemoteClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) 
 	var err error
 
 	if c.connOpened {
-		return fmt.Errorf("Already connected")
+		return fmt.Errorf("already connected")
 	}
 	config := c.ConnectOrder.ClientConfig
 	if config == nil {
@@ -403,11 +402,11 @@ func (c *RemoteClient) negativeChecksBeforeRun(task *entity.Task) error {
 	}
 
 	if c.running {
-		return fmt.Errorf("Session already running")
+		return fmt.Errorf("session already running")
 	}
 
 	if c.sessOpened {
-		return fmt.Errorf("Session already connected")
+		return fmt.Errorf("session already connected")
 	}
 	return nil
 }
@@ -438,7 +437,7 @@ func (c *RemoteClient) Wait() error {
 	}
 
 	if !c.running {
-		return fmt.Errorf("Trying to wait on stopped session")
+		return fmt.Errorf("trying to wait on stopped session")
 	}
 
 	e := c.sess.Wait()
@@ -522,7 +521,7 @@ func (c *RemoteClient) Close() error {
 		c.sessOpened = false
 	}
 	if !c.connOpened {
-		return fmt.Errorf("Trying to close the already closed connection")
+		return fmt.Errorf("trying to close the already closed connection")
 	}
 
 	err := c.conn.Close()
@@ -555,9 +554,10 @@ func (c *RemoteClient) Prefix() (string, int) {
 		hostName = c.Host[:strings.Index(c.Host, ":")]
 	}
 
-	host := c.User + "@" + hostName + "\t| "
+	host := c.User + "@" + hostName
+	// host := "@" + hostName
 	l("host: %s", host)
-	return c.Color + host + entity.ResetColor, len(host)
+	return c.Color + host + entity.ResetColor + " " + "|" + " ", len(host) + 3
 }
 
 func (c *RemoteClient) Write(p []byte) (n int, err error) {
@@ -603,19 +603,19 @@ func (c *RemoteClient) Signal(sig os.Signal) error {
 // scp part
 // -----------------------------
 
-func removePortFromHostname(c *RemoteClient) {
-	if c == nil {
-		log.Panic("24A502B0-ADC9-4AFD-86E7-8DDE04E0F732: c is nil")
-	}
+// func removePortFromHostname(c *RemoteClient) {
+// 	if c == nil {
+// 		log.Panic("24A502B0-ADC9-4AFD-86E7-8DDE04E0F732: c is nil")
+// 	}
 
-	l := kemba.New("sshclient::removePortFromHostname").Printf
+// 	l := kemba.New("sshclient::removePortFromHostname").Printf
 
-	l("port checking")
-	if strings.Contains(c.Host, ":") {
-		l("trimming host port")
-		c.Host = strings.Split(c.Host, ":")[0]
-	}
-}
+// 	l("port checking")
+// 	if strings.Contains(c.Host, ":") {
+// 		l("trimming host port")
+// 		c.Host = strings.Split(c.Host, ":")[0]
+// 	}
+// }
 
 // buildRemoteCommand constructs the command string to be run on the remote host.
 func (c *RemoteClient) buildRemoteCommand(task entity.Task) string {
@@ -626,8 +626,8 @@ func (c *RemoteClient) buildRemoteCommand(task entity.Task) string {
 	sudoPassword := c.Password
 	Env := c.Env
 
-	finalEnv := lobby.InjectNamespacesAndEnvs(task, *Env, c)
-	command = lobby.FormatCommandBasedOnSudo(sudo, sudoPassword, finalEnv, command, c, task, false)
+	finalEnv := svc.InjectNamespacesAndEnvs(task, *Env, c)
+	command = svc.FormatCommandBasedOnSudo(sudo, sudoPassword, finalEnv, command, c, task, false)
 
 	l("done building command")
 	return command

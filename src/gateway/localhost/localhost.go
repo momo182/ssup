@@ -24,22 +24,22 @@ import (
 
 // LocalhostClient is a wrapper over the SSH connection/sessions.
 type LocalhostClient struct {
-	cmd               *exec.Cmd
-	user              string
-	stdin             io.WriteCloser
-	Host              string
-	stdout            io.Reader
-	stderr            io.Reader
-	running           bool
-	Env               *entity.EnvList //export FOO="bar"; export BAR="baz";
-	tube              string
-	Inventory         *entity.Inventory
-	encryptedPassword []byte
-	encryption        string
+	cmd       *exec.Cmd
+	user      string
+	stdin     io.WriteCloser
+	Host      string
+	stdout    io.Reader
+	stderr    io.Reader
+	running   bool
+	Env       *entity.EnvList //export FOO="bar"; export BAR="baz";
+	nameSpace string
+	Inventory *entity.Inventory
+	// encryptedPassword []byte
+	// encryption        string
 }
 
 func (c *LocalhostClient) String() string {
-	return fmt.Sprintf("local connection: %s, tube: %s", c.Host, c.tube)
+	return fmt.Sprintf("local connection: %s, tube: %s", c.Host, c.nameSpace)
 }
 
 // GetHost returns the host of the LocalhostClient.
@@ -53,7 +53,7 @@ func (c *LocalhostClient) GetHost() string {
 //   - The name of the tube as a string.
 func (c LocalhostClient) GetTube() string {
 
-	return c.tube
+	return c.nameSpace
 }
 
 // SetTube sets the tube name for the LocalhostClient.
@@ -62,7 +62,7 @@ func (c LocalhostClient) GetTube() string {
 //   - name (string): The new tube name to set.
 func (c *LocalhostClient) SetTube(name string) {
 
-	c.tube = name
+	c.nameSpace = name
 }
 
 // GetSSHConfig returns a pointer to an SSH client configuration struct.
@@ -324,7 +324,8 @@ func (c *LocalhostClient) Stdout() io.Reader {
 
 // Prefix returns the client's prefix.
 func (c *LocalhostClient) Prefix() (string, int) {
-	host := c.user + "@localhost" + " | "
+	user := os.Getenv("LOGNAME")
+	host := user + "@localhost" + " | "
 	return entity.ResetColor + host, len(host)
 }
 
