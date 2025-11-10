@@ -1,0 +1,44 @@
+pipelines:
+  - name: build
+    options:
+      attach: true
+      log_level: info
+    steps:
+      - name: prep folders
+        commands:
+          - mkdir -pv ./bin
+          - rm -fv ./bin/*
+      - name: build bin
+        commands:
+          - go build -o ./bin/ssup ./cmd/ssup && echo "build OK!"
+      - name: install bin
+        commands:
+        - rm -fv $HOME/go/bin/ssup
+        - cp -v ./bin/ssup $HOME/go/bin/ssup
+
+  - name: dist
+    steps:
+      - name: prep folders
+        commands:
+          - mkdir -pv ./bin
+          - rm -fv ./bin/*
+      - name: build bin
+        commands:
+          - GOOS=darwin GOARCH=amd64 go build -o ./bin/ssup-darwin-amd64 ./cmd/sup
+          - GOOS=darwin GOARCH=arm64 go build -o ./bin/ssup-darwin-arm64 ./cmd/sup
+          - GOOS=linux GOARCH=amd64 go build -o ./bin/ssup-linux64 ./cmd/sup
+          - GOOS=linux GOARCH=386 go build -o ./bin/ssup-linux386 ./cmd/sup
+          - GOOS=windows GOARCH=amd64 go build -o ./bin/ssup-windows64.exe ./cmd/sup
+          - GOOS=windows GOARCH=386 go build -o ./bin/ssup-windows386.exe ./cmd/sup
+
+  - name: test
+    steps:
+      - name: run tests
+        commands:
+          - go test ./...
+
+  - name: tools
+    steps:
+      - name: install tools
+        commands:
+          - go get -u github.com/kardianos/govendor

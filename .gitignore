@@ -4,3 +4,4 @@ bin/
 .vscode/bookmarks.json
 dist/*
 Supfile.yml
+.pipelight/
