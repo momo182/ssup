@@ -131,18 +131,18 @@ func (c *LocalhostClient) Connect(_ entity.NetworkHost) error { // FuncName: Con
 	inventory.User = u.Username
 	c.Inventory = inventory
 
-	// do dist copy here
-	err = copyDistFolders(c)
-	if err != nil {
-		return fmt.Errorf("failed to copy dist folders for local client")
-	}
+	// // do dist copy here
+	// err = copyDistFolders(c)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to copy dist folders for local client")
+	// }
 	return nil
 }
 
 // copyDistFolders this is actually a copy from ssh package
 // but it doesnot have to be, we could skip the copy altogether
 // and just set PATH to include the folder
-func copyDistFolders(c *LocalhostClient) error {
+func (c *LocalhostClient) CopyDistFolders() error {
 	l := kemba.New("gw::ssh::LocalClient.copyDistFolders").Printf
 	l("copying dist folder")
 

@@ -13,5 +13,6 @@ type Task struct {
 	Sudo    bool `yaml:"sudo" default:"false"`
 	Env     EnvList
 	// num     int
-	Id string
+	Id   string
+	Dist string
 }

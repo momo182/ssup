@@ -2,7 +2,6 @@ package entity
 
 import (
 	"github.com/clok/kemba"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/goforj/godump"
 	"github.com/samber/oops"
 )
@@ -141,9 +140,6 @@ func checkHostsForm(host string) NetworkHost {
 		result.Password = pass
 	}
 
-	spew.Config.MaxDepth = 5
-	l(godump.DumpStr("dump: 3DB74440-E5D9-4BEE-89D8-9C4EEB1459A9", result))
-	spew.Config.MaxDepth = SPEW_DEPTH
 	l("finished checking nets")
 	return result
 }

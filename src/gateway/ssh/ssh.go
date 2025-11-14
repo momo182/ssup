@@ -189,7 +189,7 @@ func (c *RemoteClient) Connect(host entity.NetworkHost) error {
 	return c.ConnectWith(host, ssh.Dial)
 }
 
-func copyDistFolders(c *RemoteClient) error {
+func (c *RemoteClient) CopyDistFolders() error {
 	l := kemba.New("gw::ssh::SSHClient.copyDistFolders").Printf
 	l("copying dist folder")
 
@@ -277,11 +277,11 @@ func (c *RemoteClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) 
 	}
 	c.Inventory = inventory
 
-	// do dist copy here
-	err = copyDistFolders(c)
-	if err != nil {
-		return fmt.Errorf("failed to copy dist folders for remote client = %s", c.Host)
-	}
+	// // do dist copy here
+	// err = copyDistFolders(c)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to copy dist folders for remote client = %s", c.Host)
+	// }
 
 	c.connOpened = true
 	l("done creating ssh client")

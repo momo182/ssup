@@ -52,6 +52,7 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 			TTY:  cmd.Stdin,
 			Sudo: cmd.Sudo,
 			Id:   u.String(),
+			Dist: cmd.Dist,
 		}
 
 		decorateTaskDetails(args, &task, cmd)
@@ -87,6 +88,7 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 			TTY:     cmd.Stdin,
 			Env:     env,
 			Id:      u.String(),
+			Dist:    cmd.Dist,
 		}
 
 		AppendCommandEnvsToTask(cmd, task)
@@ -104,6 +106,7 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 			Sudo: cmd.Sudo,
 			Env:  env,
 			Id:   u.String(),
+			Dist: cmd.Dist,
 		}
 
 		AppendCommandEnvsToTask(cmd, &task)

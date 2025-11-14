@@ -130,10 +130,9 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 	envFile := connUserHomeDir + string(os.PathSeparator) + entity.SSUP_WORK_FOLDER + entity.VARS_FILE
 	injectedCommands := connUserHomeDir + string(os.PathSeparator) + entity.SSUP_WORK_FOLDER + entity.INJECTED_COMMANDS_FILE
 	commandsToRun := insertSSUPCommands(task.Run, connUserHomeDir)
-	l("commandsToRun:\n%s", commandsToRun)
 
 	generateBaselineStartSet := func() {
-		l("generating _ssup_run: '%s'", commandsToRun)
+		l("generating _ssup_run: \n'%s'", godump.DumpStr(commandsToRun))
 		if err := c.GenerateOnRemote([]byte(commandsToRun), mainScriptFile); err != nil {
 			log.Panic("failed to generate _ssup_run: ", err)
 		}
@@ -205,7 +204,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 		generateBaselineStartSet()
 	}
 
-	l("done formatting command: %s", command)
+	l("877dc350-c57f-11f0-af7b-21175eff454a:\ndone formatting command:\n%s", godump.DumpStr(command))
 	return command
 }
 

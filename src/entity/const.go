@@ -7,7 +7,7 @@ const CsupDoSudoEnv = "SUP_SUDO"
 
 const PassSeparator = " | "
 const TubeNameSeparator = " << "
-const SPEW_DEPTH = 1
+
 const MAIN_SCRIPT = "_ssup_run"
 const VARS_FILE = "_ssup_env"
 const HASHED_PASS = "_ssup_pass"

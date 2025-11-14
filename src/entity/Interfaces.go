@@ -31,6 +31,7 @@ type ClientFacade interface {
 	GetInventory() *Inventory
 	GetShell() string
 	String() string
+	CopyDistFolders() error
 }
 
 type ArgParserFacade interface {

@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/clok/kemba"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
 	"github.com/momo182/ssup/src/gateway/namespace"
@@ -55,7 +54,6 @@ func init() {
 		PrettyPrint: true,
 	}))
 
-	spew.Config.MaxDepth = entity.SPEW_DEPTH
 	serviceLobby.ServiceRegistry = &serviceLobby.ServiceLobby{}
 	serviceLobby.ServiceRegistry.Namespaces = namespace.New()
 	initAuthMethod()
@@ -90,7 +88,11 @@ func main() {
 		os.Exit(1)
 	}
 	l("4685D4CC-E39C-49E7-A842-5ECEF446826A: supfile after inv process")
-	l("%s", spew.Sdump(conf))
+	d := godump.NewDumper(
+		godump.WithMaxDepth(4), // default: 15
+	)
+
+	l("%s", d.DumpStr(conf))
 	outrig.Push("main_parsed_supfile", conf)
 
 	l("parse network and commands to be run from args")

@@ -24,6 +24,7 @@ type Command struct {
 	Sudo     bool             `yaml:"sudo" `  // Run command(s) as root?
 	SudoPass string           `yaml:"sudo_pass"`
 	Env      EnvList          `yaml:"env"`
+	Dist     string           `yaml:"dist"`
 
 	// API backward compatibility. Will be deprecated in v1.0.
 	RunOnce bool `yaml:"run_once"` // The command should be run once only.

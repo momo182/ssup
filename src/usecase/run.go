@@ -50,8 +50,8 @@ func (sup *Stackup) Run(runOrder entity.RunOrder) error {
 	commands := runOrder.Commands
 	args := runOrder.Args
 
-	ctx, cancel := context.WithCancel(context.Background()) // Создать контекст
-	defer cancel()                                          // На всякий случай, если не отменим явно
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	if len(commands) == 0 {
 		return sup.WrapError("1DF987CA-1E81-4C48-9163-DDAEA0C0CDF7", "no commands to be run", errors.New("no commands provided"))
@@ -178,8 +178,8 @@ func removeIndex(s []entity.ClientFacade, index int) []entity.ClientFacade {
 // Helper function to run a task.
 func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task *entity.Task, cmd *entity.Command, maxLen int, isMakefileMode bool) error {
 	l := kemba.New("uc::Stackup::runTask").Printf
-	l("task:\n%v", task)
-	l("clients:\n%v", task.Clients)
+	l("task:\n%v", godump.DumpStr(task))
+	l("clients:\n%v", godump.DumpStr(task.Clients))
 
 	totalClients := len(task.Clients)
 	if totalClients == 0 {
@@ -217,6 +217,38 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 			setCanceled() // Отменяем при ошибке загрузки
 			// Не возвращаем сразу, даем возможность запустить другие клиенты или дождаться уже запущенных
 			continue // Или break если нужно остановить обработку других клиентов в этом runTask
+		}
+
+		// Handle ./dist folder if any.
+		l("handling ./dist for %s", c.GetHost())
+		doDistCopy := false
+		if task.Dist != "" {
+			switch {
+			case task.Dist == "Y":
+				doDistCopy = true
+			case task.Dist == "1":
+				doDistCopy = true
+			case task.Dist == "Yes":
+				doDistCopy = true
+			case task.Dist == "yes":
+				doDistCopy = true
+			case task.Dist == "y":
+				doDistCopy = true
+			case task.Dist == "True":
+				doDistCopy = true
+			case task.Dist == "true":
+				doDistCopy = true
+			default:
+				doDistCopy = false
+			}
+		}
+
+		if doDistCopy {
+			if err := c.CopyDistFolders(); err != nil {
+				setCanceled() // Отменяем при ошибке загрузки
+				// Не возвращаем сразу, даем возможность запустить другие клиенты или дождаться уже запущенных
+				break // Или break если нужно остановить обработку других клиентов в этом runTask
+			}
 		}
 
 		// Run the task on the client.
