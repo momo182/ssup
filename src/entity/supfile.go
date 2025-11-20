@@ -14,6 +14,19 @@ type Supfile struct {
 	Desc     string   `yaml:"desc"`
 }
 
+func (s Supfile) String() string {
+	return fmt.Sprintf(
+		"supfile:\n+-networks: %d\n  %v\n+-commands: %d\n  %v\n+-targets: %d\n  %v\nenvs: %d\n",
+		len(s.Networks.Names),
+		s.Networks.Names,
+		len(s.Commands.Names),
+		s.Commands.Names,
+		len(s.Targets.Names),
+		s.Targets.Names,
+		len(s.Env.store),
+	)
+}
+
 func (s Supfile) GetNetworkByName(name string) (*Network, error) {
 	for _, network := range s.Networks.Names {
 		if network == name {

@@ -2,6 +2,8 @@ package entity
 
 import "fmt"
 
+var InitialArgsStore *InitialArgs = &InitialArgs{}
+
 // InitialArgs contains values from flags during program init
 type InitialArgs struct {
 	Supfile     string
