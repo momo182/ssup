@@ -89,7 +89,7 @@ func main() {
 	}
 	l("4685D4CC-E39C-49E7-A842-5ECEF446826A: supfile after inv process")
 	d := godump.NewDumper(
-		godump.WithMaxDepth(4), // default: 15
+		godump.WithMaxDepth(4),
 	)
 
 	l("%s", d.DumpStr(conf))
