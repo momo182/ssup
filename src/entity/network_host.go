@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"fmt"
+
 	"github.com/clok/kemba"
 	"github.com/goforj/godump"
 	"github.com/samber/oops"
@@ -14,6 +16,11 @@ type NetworkHost struct {
 	Env      EnvList `yaml:"env"`
 	Sudo     bool    `yaml:"sudo" default:"false"`
 	// Namespace string  `yaml:"namespace" default:""`
+}
+
+func (n *NetworkHost) String() string {
+	return fmt.Sprintf("NetworkHost{Host: %s, User: %s, Password: %s, Tube: %s, Env: %v, Sudo: %t}",
+		n.Host, n.User, n.Password, n.Tube, n.Env, n.Sudo)
 }
 
 func (n *NetworkHost) UnmarshalYAML(unmarshal func(interface{}) error) error {

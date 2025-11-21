@@ -29,6 +29,12 @@ type EnvList struct {
 	store map[string]string
 }
 
+// GetStore returns the whole store
+// used in envsubst usecase
+func (e EnvList) GetStore() map[string]string {
+	return e.store
+}
+
 func (e EnvList) Get(key string) string {
 	return e.store[key]
 }
@@ -113,4 +119,12 @@ func (e *EnvList) RemoveEnvVarByKey(key string) bool {
 		}
 	}
 	return result // Key not found
+}
+
+func (e *EnvList) String() string {
+	if e.store == nil {
+		return "{}"
+	} else {
+		return fmt.Sprintf("%v", e.store)
+	}
 }

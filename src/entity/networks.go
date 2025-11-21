@@ -3,6 +3,7 @@ package entity
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -11,6 +12,21 @@ import (
 type Networks struct {
 	Names []string
 	Nets  map[string]Network
+}
+
+func (n *Networks) String() string {
+	if n == nil {
+		return ""
+	} else {
+		var output []string
+		// output = append(output, fmt.Sprintf("Networks: %d", len(n.Names)))
+		for _, name := range n.Names {
+			if net, ok := n.Get(name); ok {
+				output = append(output, net.String())
+			}
+		}
+		return strings.Join(output, "\n")
+	}
 }
 
 func (n *Networks) UnmarshalYAML(unmarshal func(interface{}) error) error {

@@ -26,6 +26,28 @@ type Network struct {
 	Name         string
 }
 
+func (n Network) String() string {
+	if n.Name != "" {
+		lines := []string{}
+		lines = append(lines, "network: "+n.Name)
+		lines = append(lines, "  envs:")
+		for k, v := range n.Env.store {
+			if v != "" {
+				lines = append(lines, "    "+k+": "+v)
+			}
+		}
+		lines = append(lines, "  hosts:")
+		for _, h := range n.Hosts {
+			if h.Host != "" {
+				lines = append(lines, "    +-"+h.Host)
+			}
+		}
+		return strings.Join(lines, "\n")
+	} else {
+		return "network:"
+	}
+}
+
 // ParseInventory runs the inventory command, if provided, and appends
 // the command's output lines to the manually defined list of hosts.
 func (n Network) ParseInventory() ([]NetworkHost, error) {

@@ -36,6 +36,42 @@ type Commands struct {
 	Cmds  map[string]Command
 }
 
+func (c *Commands) String() string {
+	lines := []string{}
+	for _, name := range c.Names {
+		if cmd, ok := c.Get(name); ok {
+			lines = append(lines, cmd.String())
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (c *Command) String() string {
+	if c == nil {
+		return ""
+	} else {
+		line := "  " + c.Name + ": \n"
+		switch {
+		case c.Upload != nil:
+			line += "    +--upload"
+		case c.Fetch != nil:
+			line += "    +--fetch"
+		case c.Local != "":
+			line += "    +--local"
+		case c.Script != "":
+			line += "    +--script"
+		case c.Run != "":
+			line += "    +--remote"
+		}
+		if c.Env.store != nil {
+			for key, val := range c.Env.store {
+				line += "\n       +--" + key + "=" + val
+			}
+		}
+		return line
+	}
+}
+
 func (c *Commands) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	l := kemba.New("entity::Commands.UnmarshalYAML").Printf
 	var raw yaml.MapSlice

@@ -16,11 +16,11 @@ type Supfile struct {
 
 func (s Supfile) String() string {
 	return fmt.Sprintf(
-		"supfile:\n+-networks: %d\n  %v\n+-commands: %d\n  %v\n+-targets: %d\n  %v\nenvs: %d\n",
+		"supfile:\n// networks: %d\n===\n%s\n===\n// commands: %d\n===\n%s\n// targets: %d\n===\n%s\nenvs: %d\n",
 		len(s.Networks.Names),
-		s.Networks.Names,
+		s.Networks.String(),
 		len(s.Commands.Names),
-		s.Commands.Names,
+		s.Commands.String(),
 		len(s.Targets.Names),
 		s.Targets.Names,
 		len(s.Env.store),

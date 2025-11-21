@@ -19,6 +19,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/wissance/stringFormatter v1.2.0
 	golang.org/x/crypto v0.31.0
+	gomodules.xyz/envsubst v0.2.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
