@@ -1,6 +1,4 @@
-// Package lobby defines the Lobby object to
-// hold a bunch of common objects for reuse
-package lobby
+package sudoformatter
 
 import (
 	"bytes"
@@ -12,26 +10,15 @@ import (
 	"github.com/clok/kemba"
 	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/gateway/namespace"
 	sf "github.com/wissance/stringFormatter"
-	"golang.org/x/crypto/ssh"
 )
 
-// ServiceLobby holds common serices used by many places in code
-type ServiceLobby struct {
-	KeyAuth    ssh.AuthMethod
-	Namespaces *namespace.Namespace
-}
-
-// ServiceRegistry holds common serices used by many places in code
-var ServiceRegistry *ServiceLobby
-
-var RegisterCmdDisabled = ""
+var registerCmdDisabled = ""
 
 // RegisterCmd is the shell function literal to register a key and value in a file
 // later to be parsed by ssup for any envs passed inside
 // moved here to reduce code duplication
-var RegisterCmdBash = `register() {
+var registerCmdBash = `register() {
 echo "will register key '$1' with value '$2'"
 local dest="$HOME/.local/ssup/run/_tube_data"
 	
@@ -110,7 +97,7 @@ func insertSSUPCommands(command, homeDir string) string {
 // which shares the same code defined in lobby.RegisterCmd
 func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList, command string, c entity.ClientFacade, task entity.Task, isLocal bool) string {
 	l := kemba.New("lobby::FormatCommandBasedOnSudo").Printf
-	RegisterCmd := RegisterCmdBash
+	RegisterCmd := registerCmdBash
 	var err error
 
 	l("checking for SUP_SUDO")
@@ -225,71 +212,8 @@ func prepRegisterCommand(command string, RegisterCmd string) string {
 
 	if endsOnNu(head) || searchesNuViaEnv(head) {
 		l("dropping register command for nu scripts")
-		RegisterCmd = RegisterCmdDisabled
+		RegisterCmd = registerCmdDisabled
 	}
 
 	return RegisterCmd
-}
-
-// func encryptPassword(password, encryptionPhrase string) ([]byte, error) {
-// 	cmd := exec.Command("openssl", "enc", "-aes-256-cbc", "-salt", "-pbkdf2", "-pass", "env:ENCRYPTION_PASSPHRASE")
-
-// 	stdinPipe, err := cmd.StdinPipe()
-// 	if err != nil {
-// 		return []byte(""), fmt.Errorf("failed to get stdin pipe: %v", err)
-// 	}
-
-// 	go func() {
-// 		defer stdinPipe.Close()
-// 		stdinPipe.Write([]byte(password))
-// 	}()
-
-// 	var stderr bytes.Buffer
-// 	cmd.Stderr = &stderr
-// 	cmd.Env = []string{"ENCRYPTION_PASSPHRASE=" + encryptionPhrase}
-
-// 	out, err := cmd.Output()
-// 	if err != nil {
-// 		return []byte(""), fmt.Errorf("command failed: %v, %s", err, stderr.String())
-// 	}
-
-// 	return out, nil
-// }
-
-// InjectNamespacesAndEnvs injects the namespaces and envs into the command
-//
-// namespaces follow command definitions to overwrite envs with values returned
-// from namespaces
-func InjectNamespacesAndEnvs(task entity.Task, Env entity.EnvList, c entity.ClientFacade) entity.EnvList {
-	l := kemba.New("lobby::InjectNamespacesAndEnvs").Printf
-
-	if len(task.Env.Keys()) > 0 {
-		for _, key := range task.Env.Keys() {
-			l("injecting task env: %s=%s", key, task.Env.Get(key))
-
-			Env.Set(key, task.Env.Get(key))
-		}
-	}
-
-	nsEnvs := ServiceRegistry.Namespaces.Get(c.GetHost())
-	if len(nsEnvs.EnvStore) > 0 {
-		for k, v := range nsEnvs.EnvStore {
-			l("injecting namespace env: %s=%s", k, v)
-			Env.Set(k, v)
-		}
-	}
-
-	if c.GetTube() != "" {
-		l("found tube: %s, attached to host: %s", c.GetTube(), c.GetHost())
-		remoteNs := ServiceRegistry.Namespaces.Get(c.GetTube())
-		if len(remoteNs.EnvStore) > 0 {
-			for k, v := range remoteNs.EnvStore {
-				l("injecting namespace env: %s=%s", k, v)
-				Env.Set(k, v)
-			}
-		}
-	}
-
-	l("done injecting namespaces and envs:\n%s", godump.DumpStr(Env))
-	return Env
 }

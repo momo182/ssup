@@ -9,11 +9,55 @@ import (
 	"github.com/momo182/ssup/src/entity"
 )
 
+var Namespaces *Namespace
+
 // Namespace stores env information from the session
 // it has methods to get and set env variables from any kind of export (bash,sh)
 type Namespace struct {
 	hostStore map[string]entity.HostNamespace
 	mu        sync.RWMutex // Add a mutex
+}
+
+func init() {
+	Namespaces = New()
+}
+
+// InjectNamespacesAndEnvs injects the namespaces and envs into the command
+//
+// namespaces follow command definitions to overwrite envs with values returned
+// from namespaces
+func InjectNamespacesAndEnvs(task entity.Task, Env entity.EnvList, c entity.ClientFacade) entity.EnvList {
+	l := kemba.New("lobby::InjectNamespacesAndEnvs").Printf
+
+	if len(task.Env.Keys()) > 0 {
+		for _, key := range task.Env.Keys() {
+			l("injecting task env: %s=%s", key, task.Env.Get(key))
+
+			Env.Set(key, task.Env.Get(key))
+		}
+	}
+
+	nsEnvs := Namespaces.Get(c.GetHost())
+	if len(nsEnvs.EnvStore) > 0 {
+		for k, v := range nsEnvs.EnvStore {
+			l("injecting namespace env: %s=%s", k, v)
+			Env.Set(k, v)
+		}
+	}
+
+	if c.GetTube() != "" {
+		l("found tube: %s, attached to host: %s", c.GetTube(), c.GetHost())
+		remoteNs := Namespaces.Get(c.GetTube())
+		if len(remoteNs.EnvStore) > 0 {
+			for k, v := range remoteNs.EnvStore {
+				l("injecting namespace env: %s=%s", k, v)
+				Env.Set(k, v)
+			}
+		}
+	}
+
+	l("done injecting namespaces and envs:\n%s", godump.DumpStr(Env))
+	return Env
 }
 
 func NewHostNamespace() entity.HostNamespace {

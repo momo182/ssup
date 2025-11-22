@@ -10,8 +10,7 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/momo182/ssup/src/gateway/namespace"
-	serviceLobby "github.com/momo182/ssup/src/lobby"
+	keys "github.com/momo182/ssup/src/gateway/keyauthprovider"
 	oopslogrus "github.com/samber/oops/loggers/logrus"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
@@ -47,8 +46,6 @@ func InitApp() {
 		PrettyPrint: true,
 	}))
 
-	serviceLobby.ServiceRegistry = &serviceLobby.ServiceLobby{}
-	serviceLobby.ServiceRegistry.Namespaces = namespace.New()
 	initAuthMethod()
 	l("all flags set")
 }
@@ -89,6 +86,6 @@ func initAuthMethod() {
 	}
 	l("found %v SSH signers", len(signers))
 	auth := ssh.PublicKeys(signers...)
-	serviceLobby.ServiceRegistry.KeyAuth = auth
+	keys.KeyAuth = auth
 	l("done initializing SSH authentication method")
 }

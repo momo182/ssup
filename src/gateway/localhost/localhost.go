@@ -16,8 +16,9 @@ import (
 	"github.com/gookit/goutil/fsutil"
 	"github.com/mitchellh/go-homedir"
 	"github.com/momo182/ssup/src/entity"
+	ns "github.com/momo182/ssup/src/gateway/namespace"
 	shellcheckService "github.com/momo182/ssup/src/gateway/shellcheck"
-	"github.com/momo182/ssup/src/lobby"
+	sudo "github.com/momo182/ssup/src/gateway/sudo_formatter"
 	"github.com/samber/oops"
 	"golang.org/x/crypto/ssh"
 )
@@ -38,31 +39,31 @@ type LocalhostClient struct {
 	// encryption        string
 }
 
-func (c *LocalhostClient) String() string {
-	return fmt.Sprintf("local connection: %s, tube: %s", c.Host, c.nameSpace)
+func (client *LocalhostClient) String() string {
+	return fmt.Sprintf("local connection: %s, tube: %s", client.Host, client.nameSpace)
 }
 
 // GetHost returns the host of the LocalhostClient.
-func (c *LocalhostClient) GetHost() string {
-	return c.Host
+func (client *LocalhostClient) GetHost() string {
+	return client.Host
 }
 
 // GetTube is a method to get the tube name of the LocalhostClient.
 //
 // Returns:
 //   - The name of the tube as a string.
-func (c LocalhostClient) GetTube() string {
+func (client LocalhostClient) GetTube() string {
 
-	return c.nameSpace
+	return client.nameSpace
 }
 
 // SetTube sets the tube name for the LocalhostClient.
 //
 // Args:
 //   - name (string): The new tube name to set.
-func (c *LocalhostClient) SetTube(name string) {
+func (client *LocalhostClient) SetTube(name string) {
 
-	c.nameSpace = name
+	client.nameSpace = name
 }
 
 // GetSSHConfig returns a pointer to an SSH client configuration struct.
@@ -70,7 +71,7 @@ func (c *LocalhostClient) SetTube(name string) {
 // Returns:
 //   - A pointer to the SSH client config. Note that for local machines,
 //     this method always returns nil, as it doesn't need to reconnect.
-func (c *LocalhostClient) GetSSHConfig() *ssh.ClientConfig {
+func (client *LocalhostClient) GetSSHConfig() *ssh.ClientConfig {
 	// simple passthru, local machine wont have to reconnect
 
 	return nil // nolint: unused
@@ -80,7 +81,7 @@ func (c *LocalhostClient) GetSSHConfig() *ssh.ClientConfig {
 //
 // It is assumed that this method will only be called on the localhost client,
 // and thus does not require an existing connection.
-func (c LocalhostClient) GetConnection() *ssh.Client {
+func (client LocalhostClient) GetConnection() *ssh.Client {
 	// simple passthru, local machine wont have to reconnect
 	return nil
 }
@@ -93,12 +94,12 @@ func (c LocalhostClient) SetConnection(client *ssh.Client) {
 }
 
 // GetShell returns the shell of the LocalhostClient.
-func (c *LocalhostClient) GetShell() string { // FuncName: GetShell
-	if c.Inventory.Bash {
+func (client *LocalhostClient) GetShell() string { // FuncName: GetShell
+	if client.Inventory.Bash {
 		return "bash"
 	}
 
-	if c.Inventory.Sh {
+	if client.Inventory.Sh {
 		return "sh"
 	}
 
@@ -106,8 +107,8 @@ func (c *LocalhostClient) GetShell() string { // FuncName: GetShell
 }
 
 // GetInventory returns the inventory of the LocalhostClient.
-func (c *LocalhostClient) GetInventory() *entity.Inventory { // FuncName: GetInventory
-	return c.Inventory
+func (client *LocalhostClient) GetInventory() *entity.Inventory { // FuncName: GetInventory
+	return client.Inventory
 }
 
 // Connect connects to the host using SSH.
@@ -117,7 +118,7 @@ func (c *LocalhostClient) GetInventory() *entity.Inventory { // FuncName: GetInv
 //
 // Returns:
 //   - An error if there's a problem connecting, otherwise nil.
-func (c *LocalhostClient) Connect(_ entity.NetworkHost) error { // FuncName: Connect
+func (client *LocalhostClient) Connect(_ entity.NetworkHost) error { // FuncName: Connect
 	u, err := user.Current()
 	inventory, err := GatherInventory(nil)
 	if err != nil {
@@ -129,7 +130,7 @@ func (c *LocalhostClient) Connect(_ entity.NetworkHost) error { // FuncName: Con
 	}
 
 	inventory.User = u.Username
-	c.Inventory = inventory
+	client.Inventory = inventory
 
 	// // do dist copy here
 	// err = copyDistFolders(c)
@@ -142,19 +143,19 @@ func (c *LocalhostClient) Connect(_ entity.NetworkHost) error { // FuncName: Con
 // copyDistFolders this is actually a copy from ssh package
 // but it doesnot have to be, we could skip the copy altogether
 // and just set PATH to include the folder
-func (c *LocalhostClient) CopyDistFolders() error {
+func (client *LocalhostClient) CopyDistFolders() error {
 	l := kemba.New("gw::ssh::LocalClient.copyDistFolders").Printf
 	l("copying dist folder")
 
-	if c == nil {
+	if client == nil {
 		return errors.New("client is nil")
 	}
 
-	if c.Inventory == nil {
+	if client.Inventory == nil {
 		return errors.New("client inventory is nil")
 	}
 
-	l(godump.DumpStr(c.Inventory))
+	l(godump.DumpStr(client.Inventory))
 
 	// check if dist of ssupdist is present and if so copy it
 	// to remote host ~/.local/ssup/dist
@@ -173,23 +174,23 @@ func (c *LocalhostClient) CopyDistFolders() error {
 	l("dist folder found at %v", srcPath)
 
 	sep := "/"
-	if c.Inventory.OsType != "Darwin" && c.Inventory.OsType != "Linux" {
+	if client.Inventory.OsType != "Darwin" && client.Inventory.OsType != "Linux" {
 		sep = "\\"
 	}
 
 	l("sep is: '%v'", sep)
-	destPath := c.Inventory.Home + sep + ".local" + sep + "ssup" + sep + "dist"
+	destPath := client.Inventory.Home + sep + ".local" + sep + "ssup" + sep + "dist"
 	l("destPath is: '%v'")
 
-	return c.Upload(srcPath, destPath)
+	return client.Upload(srcPath, destPath)
 }
 
 // Run starts the given task on localhost, does not wait for it to finish.
-func (c *LocalhostClient) Run(task *entity.Task) error { // FuncName: Run
+func (client *LocalhostClient) Run(task *entity.Task) error { // FuncName: Run
 	l := kemba.New("gateway::localhost::Run").Printf
 
 	l(fmt.Sprintf("Running task: %s", godump.DumpStr(task.Env)))
-	if c.running {
+	if client.running {
 		return fmt.Errorf("Command already running")
 	}
 
@@ -198,15 +199,15 @@ func (c *LocalhostClient) Run(task *entity.Task) error { // FuncName: Run
 	if len(task.Env.Keys()) != 0 {
 		// c.Env = append(c.Env, task.Env...)
 		for _, key := range task.Env.Keys() {
-			c.Env.Set(key, task.Env.Get(key))
+			client.Env.Set(key, task.Env.Get(key))
 		}
 	}
 
 	// oldInvocation := []string{"bash", "-c", c.Env.AsExport()+task.Run}
-	newInvocation := c.buildLocalCommand(*task)
+	newInvocation := client.buildLocalCommand(*task)
 	l("dump: B1DA9A9A-452B-4739-A8D8-15AEEA0D658D")
 	l(godump.DumpStr(newInvocation))
-	cmd := exec.Command(c.GetShell(), "-c", newInvocation)
+	cmd := exec.Command(client.GetShell(), "-c", newInvocation)
 	// cmd.Stdin = bytes.NewReader([]byte(newInvocation))
 	inPipe, err := cmd.StdinPipe()
 	if err != nil {
@@ -221,17 +222,17 @@ func (c *LocalhostClient) Run(task *entity.Task) error { // FuncName: Run
 		return err
 	}
 
-	c.stdout = outPipe
-	c.stderr = errPipe
-	c.stdin = inPipe
+	client.stdout = outPipe
+	client.stderr = errPipe
+	client.stdin = inPipe
 	l("prepping tty")
 
 	if task.TTY {
-		c.stdin = inPipe
+		client.stdin = inPipe
 	}
 
 	l("all pipes are set up")
-	c.cmd = cmd
+	client.cmd = cmd
 
 	l("prepared command: %s", cmd.String())
 	l("^^^ this should have vars exported !!!!")
@@ -239,17 +240,17 @@ func (c *LocalhostClient) Run(task *entity.Task) error { // FuncName: Run
 	l("as for the pipes...")
 
 	l("starting local party")
-	if err := c.cmd.Start(); err != nil {
+	if err := client.cmd.Start(); err != nil {
 		l("sometimes even local party can fail")
 		return entity.ErrTask{Task: task, Reason: err.Error()}
 	}
 
-	c.running = true
+	client.running = true
 	return nil
 }
 
 // Wait waits until the command finishes.
-func (c *LocalhostClient) Wait() error {
+func (client *LocalhostClient) Wait() error {
 	l := kemba.New("localhost::Wait").Printf
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -266,16 +267,16 @@ func (c *LocalhostClient) Wait() error {
 		os.Remove(tgt)
 	}()
 
-	if !c.running {
+	if !client.running {
 		return fmt.Errorf("Trying to wait on stopped command")
 	}
-	err = c.cmd.Wait()
+	err = client.cmd.Wait()
 	if err != nil {
 		oops.Trace("B4730A7E-1E1A-478B-A499-51FEB83BCD88").
 			Hint("waiting for command").
 			Wrap(err)
 	}
-	c.running = false
+	client.running = false
 
 	l("grab vars from the run")
 	// if home+"/"+entity.VARS_TAIL exists, read it, else skip
@@ -293,9 +294,9 @@ func (c *LocalhostClient) Wait() error {
 		}
 
 		l("output:\n%s", envlines)
-		c.Host = "localhost"
-		lobby.ServiceRegistry.Namespaces.SetFromEnvString(string(envlines), c.Host)
-		data := lobby.ServiceRegistry.Namespaces.Get(c.Host)
+		client.Host = "localhost"
+		ns.Namespaces.SetFromEnvString(string(envlines), client.Host)
+		data := ns.Namespaces.Get(client.Host)
 		l("data:\n%s", godump.DumpStr(data))
 	}
 
@@ -303,49 +304,49 @@ func (c *LocalhostClient) Wait() error {
 }
 
 // Close closes the client.
-func (c *LocalhostClient) Close() error {
+func (client *LocalhostClient) Close() error {
 	return nil
 }
 
 // Stdin returns the client's standard input.
-func (c *LocalhostClient) Stdin() io.WriteCloser {
-	return c.stdin
+func (client *LocalhostClient) Stdin() io.WriteCloser {
+	return client.stdin
 }
 
 // Stderr returns the client's standard error.
-func (c *LocalhostClient) Stderr() io.Reader {
-	return c.stderr
+func (client *LocalhostClient) Stderr() io.Reader {
+	return client.stderr
 }
 
 // Stdout returns the client's standard output.
-func (c *LocalhostClient) Stdout() io.Reader {
-	return c.stdout
+func (client *LocalhostClient) Stdout() io.Reader {
+	return client.stdout
 }
 
 // Prefix returns the client's prefix.
-func (c *LocalhostClient) Prefix() (string, int) {
+func (client *LocalhostClient) Prefix() (string, int) {
 	user := os.Getenv("LOGNAME")
 	host := user + "@localhost" + " | "
 	return entity.ResetColor + host, len(host)
 }
 
 // Write implements writing byte into stdin.
-func (c *LocalhostClient) Write(p []byte) (n int, err error) {
-	if c.stdin == nil {
+func (client *LocalhostClient) Write(p []byte) (n int, err error) {
+	if client.stdin == nil {
 		return 0, fmt.Errorf("Trying to write to closed stdin")
 	}
-	return c.stdin.Write(p)
+	return client.stdin.Write(p)
 }
 
-func (c *LocalhostClient) WriteClose() error {
-	if c.stdin == nil {
+func (client *LocalhostClient) WriteClose() error {
+	if client.stdin == nil {
 		return fmt.Errorf("Trying to close to closed stdin")
 	}
-	return c.stdin.Close()
+	return client.stdin.Close()
 }
 
-func (c *LocalhostClient) Signal(sig os.Signal) error {
-	return c.cmd.Process.Signal(sig)
+func (client *LocalhostClient) Signal(sig os.Signal) error {
+	return client.cmd.Process.Signal(sig)
 }
 
 // func (c *LocalhostClient) Upload(localPath, remotePath string, silent bool) error {
@@ -358,7 +359,7 @@ func (c *LocalhostClient) Signal(sig os.Signal) error {
 // 	return nil
 // }
 
-func (c *LocalhostClient) Upload(src, dst string) error {
+func (client *LocalhostClient) Upload(src, dst string) error {
 	l := kemba.New("gw::local::upload").Printf
 	src, err := homedir.Expand(src)
 	if err != nil {
@@ -371,10 +372,10 @@ func (c *LocalhostClient) Upload(src, dst string) error {
 	l("kinda uploading %s to %s", src, dst)
 	l("but its just a copy operation")
 
-	return c.copyPath(src, dst, l)
+	return client.copyPath(src, dst, l)
 }
 
-func (c *LocalhostClient) Download(src, dst string, silent bool, _ bool) error {
+func (client *LocalhostClient) Download(src, dst string, silent bool, _ bool) error {
 	l := kemba.New("gw::local::download").Printf
 	src, err := homedir.Expand(src)
 	if err != nil {
@@ -387,11 +388,11 @@ func (c *LocalhostClient) Download(src, dst string, silent bool, _ bool) error {
 	l("kinda downloading %s to %s", src, dst)
 	l("but its just a copy operation")
 
-	return c.copyPath(src, dst, l)
+	return client.copyPath(src, dst, l)
 }
 
 // copyPath handles the actual file/directory copying logic
-func (c *LocalhostClient) copyPath(src, dst string, l func(format string, args ...interface{})) error {
+func (client *LocalhostClient) copyPath(src, dst string, l func(format string, args ...interface{})) error {
 	srcInfo, err := os.Stat(src)
 	if err != nil {
 		l("failed to stat source: %v", err)
@@ -399,13 +400,13 @@ func (c *LocalhostClient) copyPath(src, dst string, l func(format string, args .
 	}
 
 	if srcInfo.IsDir() {
-		return c.copyDirectory(src, dst, l)
+		return client.copyDirectory(src, dst, l)
 	}
-	return c.copyFile(src, dst, l)
+	return client.copyFile(src, dst, l)
 }
 
 // copyFile copies a single file from src to dst
-func (c *LocalhostClient) copyFile(src, dst string, l func(format string, args ...interface{})) error {
+func (client *LocalhostClient) copyFile(src, dst string, l func(format string, args ...interface{})) error {
 	sourceFile, err := os.Open(src)
 	if err != nil {
 		l("failed to open source file: %v", err)
@@ -445,7 +446,7 @@ func (c *LocalhostClient) copyFile(src, dst string, l func(format string, args .
 }
 
 // copyDirectory recursively copies a directory from src to dst
-func (c *LocalhostClient) copyDirectory(src, dst string, l func(format string, args ...interface{})) error {
+func (client *LocalhostClient) copyDirectory(src, dst string, l func(format string, args ...interface{})) error {
 	// Create destination directory
 	srcInfo, err := os.Stat(src)
 	if err != nil {
@@ -468,11 +469,11 @@ func (c *LocalhostClient) copyDirectory(src, dst string, l func(format string, a
 		dstPath := filepath.Join(dst, entry.Name())
 
 		if entry.IsDir() {
-			if err := c.copyDirectory(srcPath, dstPath, l); err != nil {
+			if err := client.copyDirectory(srcPath, dstPath, l); err != nil {
 				return err
 			}
 		} else {
-			if err := c.copyFile(srcPath, dstPath, l); err != nil {
+			if err := client.copyFile(srcPath, dstPath, l); err != nil {
 				return err
 			}
 		}
@@ -482,7 +483,7 @@ func (c *LocalhostClient) copyDirectory(src, dst string, l func(format string, a
 	return nil
 }
 
-func (c *LocalhostClient) GenerateOnRemote(data []byte, dest string) error {
+func (client *LocalhostClient) GenerateOnRemote(data []byte, dest string) error {
 	l := kemba.New("gw::local::GenerateOnRemote").Printf
 	var shellcheck entity.ShellCheckFacade
 	shellcheck = &shellcheckService.ShellCheckProvider{}
@@ -507,7 +508,7 @@ func (c *LocalhostClient) GenerateOnRemote(data []byte, dest string) error {
 
 	if e == nil {
 		l("/System/Library is dir")
-		dest = strings.Replace(dest, "/home/"+c.user, home, 1)
+		dest = strings.Replace(dest, "/home/"+client.user, home, 1)
 	}
 
 	// write the data to a destination file
@@ -537,16 +538,16 @@ func (c *LocalhostClient) GenerateOnRemote(data []byte, dest string) error {
 }
 
 // buildRemoteCommand constructs the command string to be run on the remote host.
-func (c *LocalhostClient) buildLocalCommand(task entity.Task) string {
+func (client *LocalhostClient) buildLocalCommand(task entity.Task) string {
 	l := kemba.New("LocalhostClient.build_remote_command").Printf
 
 	command := task.Run
-	sudo := task.Sudo
+	isSudo := task.Sudo
 	sudoPassword := ""
-	Env := c.Env
+	Env := client.Env
 
-	finalEnv := lobby.InjectNamespacesAndEnvs(task, *Env, c)
-	command = lobby.FormatCommandBasedOnSudo(sudo, sudoPassword, finalEnv, command, c, task, true)
+	finalEnv := ns.InjectNamespacesAndEnvs(task, *Env, client)
+	command = sudo.FormatCommandBasedOnSudo(isSudo, sudoPassword, finalEnv, command, client, task, true)
 
 	l("done building command")
 	return command

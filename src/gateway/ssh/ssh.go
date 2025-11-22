@@ -15,7 +15,9 @@ import (
 	"github.com/goforj/godump"
 	"github.com/gookit/goutil/fsutil"
 	"github.com/momo182/ssup/src/entity"
-	svc "github.com/momo182/ssup/src/lobby"
+	keys "github.com/momo182/ssup/src/gateway/keyauthprovider"
+	ns "github.com/momo182/ssup/src/gateway/namespace"
+	sudo "github.com/momo182/ssup/src/gateway/sudo_formatter"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -71,28 +73,28 @@ func (e ErrInv) Error() string {
 	return fmt.Sprintf(`Connect("%v@%v"): %v`, e.User, e.Host, e.Reason)
 }
 
-func (c *RemoteClient) String() string {
-	return fmt.Sprintf("RemoteClient{Host: %v, Tube: %v}", c.Host, c.nameSpace)
+func (client *RemoteClient) String() string {
+	return fmt.Sprintf("RemoteClient{Host: %v, Tube: %v}", client.Host, client.nameSpace)
 }
 
 // GetHost returns the host of the SSHClient.
-func (c *RemoteClient) GetHost() string {
-	return c.Host
+func (client *RemoteClient) GetHost() string {
+	return client.Host
 }
 
 // GetTube returns the tube of the SSHClient.
-func (c RemoteClient) GetTube() string {
-	return c.nameSpace
+func (client RemoteClient) GetTube() string {
+	return client.nameSpace
 }
 
 // GetConnection returns the client configuration of the SSHClient.
-func (c RemoteClient) GetSSHConfig() *ssh.ClientConfig {
-	return c.ConnectOrder.ClientConfig
+func (client RemoteClient) GetSSHConfig() *ssh.ClientConfig {
+	return client.ConnectOrder.ClientConfig
 }
 
 // GetConnection returns the client configuration of the SSHClient.
-func (c RemoteClient) GetConnection() *ssh.Client {
-	return c.conn
+func (client RemoteClient) GetConnection() *ssh.Client {
+	return client.conn
 }
 
 // SetConnection sets the SSH client connection of the SSHClient.
@@ -102,51 +104,51 @@ func (c *RemoteClient) SetConnection(client *ssh.Client) {
 }
 
 // SetTube sets the tube of the SSHClient.
-func (c *RemoteClient) SetTube(name string) {
-	c.nameSpace = name
+func (client *RemoteClient) SetTube(name string) {
+	client.nameSpace = name
 }
 
 // GetPassword returns the password of the SSHClient.
-func (c *RemoteClient) GetPassword() string {
-	return c.Password
+func (client *RemoteClient) GetPassword() string {
+	return client.Password
 }
 
 // SetPassword sets the password of the SSHClient.
-func (c *RemoteClient) SetPassword(pwd string) {
-	c.Password = pwd
+func (client *RemoteClient) SetPassword(pwd string) {
+	client.Password = pwd
 }
 
 // parseHost parses and normalizes <user>@<host:port> from a given string.
-func (c *RemoteClient) parseHost(host string) error {
-	c.Host = host
+func (client *RemoteClient) parseHost(host string) error {
+	client.Host = host
 
 	// Remove extra "ssh://" schema
-	if len(c.Host) > 6 && c.Host[:6] == "ssh://" {
-		c.Host = c.Host[6:]
+	if len(client.Host) > 6 && client.Host[:6] == "ssh://" {
+		client.Host = client.Host[6:]
 	}
 
 	// Split by the last "@", since there may be an "@" in the username.
-	if at := strings.LastIndex(c.Host, "@"); at != -1 {
-		c.User = c.Host[:at]
-		c.Host = c.Host[at+1:]
+	if at := strings.LastIndex(client.Host, "@"); at != -1 {
+		client.User = client.Host[:at]
+		client.Host = client.Host[at+1:]
 	}
 
 	// Add default user, if not set
-	if c.User == "" {
+	if client.User == "" {
 		u, err := user.Current()
 		if err != nil {
 			return err
 		}
-		c.User = u.Username
+		client.User = u.Username
 	}
 
-	if strings.Index(c.Host, "/") != -1 {
-		return ErrConnect{c.User, c.Host, "unexpected slash in the host URL"}
+	if strings.Index(client.Host, "/") != -1 {
+		return ErrConnect{client.User, client.Host, "unexpected slash in the host URL"}
 	}
 
 	// Add default port, if not set
-	if strings.Index(c.Host, ":") == -1 {
-		c.Host += ":22"
+	if strings.Index(client.Host, ":") == -1 {
+		client.Host += ":22"
 	}
 
 	return nil
@@ -157,21 +159,21 @@ type SSHDialFunc func(net, addr string, config *ssh.ClientConfig) (*ssh.Client, 
 
 // Connect creates SSH connection to a specified host.
 // It expects the host of the form "[ssh://]host[:port]".
-func (c *RemoteClient) Connect(host entity.NetworkHost) error {
+func (client *RemoteClient) Connect(host entity.NetworkHost) error {
 	l := kemba.New("gw::ssh::SSHClient.Connect").Printf
 
-	err := c.parseHost(host.Host)
+	err := client.parseHost(host.Host)
 	if err != nil {
 		return err
 	}
 
 	l("checking password auth")
-	authMethods := svc.SetupAuthMethods(host)
+	authMethods := keys.SetupAuthMethods(host)
 
 	l("creating config")
 	// l(godump.DumpStr(host, authMethods))
 	config := ssh.ClientConfig{
-		User:            c.User,
+		User:            client.User,
 		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
@@ -184,21 +186,21 @@ func (c *RemoteClient) Connect(host entity.NetworkHost) error {
 	}
 	// l(godump.DumpStr(connectOrder))
 
-	c.ConnectOrder = connectOrder
+	client.ConnectOrder = connectOrder
 
-	return c.ConnectWith(host, ssh.Dial)
+	return client.ConnectWith(host, ssh.Dial)
 }
 
-func (c *RemoteClient) CopyDistFolders() error {
+func (client *RemoteClient) CopyDistFolders() error {
 	l := kemba.New("gw::ssh::SSHClient.copyDistFolders").Printf
 	l("copying dist folder")
 
-	if c == nil {
+	if client == nil {
 		l("client is nil")
 		return errors.New("client is nil")
 	}
 
-	if c.Inventory == nil {
+	if client.Inventory == nil {
 		l("client inventory is nil")
 		return errors.New("client inventory is nil")
 	}
@@ -222,7 +224,7 @@ func (c *RemoteClient) CopyDistFolders() error {
 		}
 	}
 
-	l(godump.DumpStr(c.Inventory))
+	l(godump.DumpStr(client.Inventory))
 
 	// check if dist of ssupdist is present and if so copy it
 	// to remote host ~/.local/ssup/dist
@@ -235,29 +237,29 @@ func (c *RemoteClient) CopyDistFolders() error {
 	l("dist folder found at %v", srcPath)
 
 	sep := "/"
-	if c.Inventory.OsType != "Darwin" && c.Inventory.OsType != "Linux" {
+	if client.Inventory.OsType != "Darwin" && client.Inventory.OsType != "Linux" {
 		sep = "\\"
 	}
 
 	l("sep is: '%v'", sep)
-	destPath := c.Inventory.Home + sep + ".local" + sep + "ssup" + sep + "dist"
+	destPath := client.Inventory.Home + sep + ".local" + sep + "ssup" + sep + "dist"
 	l("destPath is: '%v'")
 
-	return c.Upload(srcPath, destPath)
+	return client.Upload(srcPath, destPath)
 }
 
 // ConnectWith creates a SSH connection to a specified host. It will use dialer to establish the
 // connection.
 // TODO: Split Signers to its own method.
-func (c *RemoteClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) error {
+func (client *RemoteClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) error {
 	l := kemba.New("gw::ssh::SSHClient.ConnectWith").Printf
 	l("connecting to %v", host)
 	var err error
 
-	if c.connOpened {
+	if client.connOpened {
 		return fmt.Errorf("already connected")
 	}
-	config := c.ConnectOrder.ClientConfig
+	config := client.ConnectOrder.ClientConfig
 	if config == nil {
 		return fmt.Errorf("ssh ClientConfig is nil")
 	}
@@ -265,17 +267,17 @@ func (c *RemoteClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) 
 	config.Timeout = 500 * time.Millisecond
 
 	l("creating ssh client")
-	c.conn, err = dialer("tcp", c.Host, config)
+	client.conn, err = dialer("tcp", client.Host, config)
 	if err != nil {
-		return ErrConnect{c.User, c.Host, err.Error()}
+		return ErrConnect{client.User, client.Host, err.Error()}
 	}
 
 	// TODO add inventory here
-	inventory, err := GatherInventory(c.conn)
+	inventory, err := GatherInventory(client.conn)
 	if err != nil {
-		return ErrInv{c.User, c.Host, err.Error()}
+		return ErrInv{client.User, client.Host, err.Error()}
 	}
-	c.Inventory = inventory
+	client.Inventory = inventory
 
 	// // do dist copy here
 	// err = copyDistFolders(c)
@@ -283,13 +285,13 @@ func (c *RemoteClient) ConnectWith(host entity.NetworkHost, dialer SSHDialFunc) 
 	// 	return fmt.Errorf("failed to copy dist folders for remote client = %s", c.Host)
 	// }
 
-	c.connOpened = true
+	client.connOpened = true
 	l("done creating ssh client")
 
 	// add namespace for the host
-	l("adding namespace for host: %v", c.Host)
-	svc.ServiceRegistry.Namespaces.Add(c.Host)
-	l("done adding namespace for host: %v", c.Host)
+	l("adding namespace for host: %v", client.Host)
+	ns.Namespaces.Add(client.Host)
+	l("done adding namespace for host: %v", client.Host)
 	return nil
 }
 
@@ -388,67 +390,67 @@ func (c *RemoteClient) Run(task *entity.Task) error {
 	return nil
 }
 
-func (c *RemoteClient) negativeChecksBeforeRun(task *entity.Task) error {
+func (client *RemoteClient) negativeChecksBeforeRun(task *entity.Task) error {
 	if task == nil {
 		return errors.New("got nil task")
 	}
 
-	if c.conn == nil {
+	if client.conn == nil {
 		return errors.New("ssh client not connected")
 	}
 
-	if c.sess != nil {
+	if client.sess != nil {
 		return errors.New("ssh session somehow... connected")
 	}
 
-	if c.running {
+	if client.running {
 		return fmt.Errorf("session already running")
 	}
 
-	if c.sessOpened {
+	if client.sessOpened {
 		return fmt.Errorf("session already connected")
 	}
 	return nil
 }
 
-func (c *RemoteClient) GetShell() string {
-	if c.Inventory.Bash {
+func (client *RemoteClient) GetShell() string {
+	if client.Inventory.Bash {
 		return "bash"
 	}
 
-	if c.Inventory.Sh {
+	if client.Inventory.Sh {
 		return "sh"
 	}
 
 	return ""
 }
 
-func (c *RemoteClient) GetInventory() *entity.Inventory {
-	return c.Inventory
+func (client *RemoteClient) GetInventory() *entity.Inventory {
+	return client.Inventory
 }
 
 // Wait waits until the remote command finishes and exits.
 // It closes the SSH session.
-func (c *RemoteClient) Wait() error {
+func (client *RemoteClient) Wait() error {
 	l := kemba.New("gateway::ssh::SSHClient.Wait").Printf
-	l("will wait for client: %s", c.Host)
-	if c == nil {
+	l("will wait for client: %s", client.Host)
+	if client == nil {
 		log.Panic("7782C3CF-5E8E-4740-9F7E-D68A9B2ED71C: no ssh client passed")
 	}
 
-	if !c.running {
+	if !client.running {
 		return fmt.Errorf("trying to wait on stopped session")
 	}
 
-	e := c.sess.Wait()
+	e := client.sess.Wait()
 	if e != nil {
 		return entity.ErrTask{Task: nil, Reason: e.Error()}
 	}
-	c.sess.Close()
-	c.running = false
-	c.sessOpened = false
+	client.sess.Close()
+	client.running = false
+	client.sessOpened = false
 
-	return c.FetchEnvsWithTar()
+	return client.FetchEnvsWithTar()
 }
 
 func (c *RemoteClient) FetchEnvsWithTar() error {
@@ -495,15 +497,15 @@ func (c *RemoteClient) FetchEnvsWithTar() error {
 	l("dump: 21D2239C-7DCD-4044-B30C-FFB5254EB0C2")
 	l("%s", godump.DumpStr(string(remoteVars)))
 
-	svc.ServiceRegistry.Namespaces.SetFromEnvString(string(remoteVars), c.Host)
-	debugData := svc.ServiceRegistry.Namespaces.Get(c.Host)
+	ns.Namespaces.SetFromEnvString(string(remoteVars), c.Host)
+	debugData := ns.Namespaces.Get(c.Host)
 	l("data:\n%s", godump.DumpStr(debugData))
 	return nil
 }
 
 // DialThrough will create a new connection from the ssh server sc is connected to. DialThrough is an SSHDialer.
-func (c *RemoteClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
-	conn, err := c.conn.Dial(net, addr)
+func (client *RemoteClient) DialThrough(net, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	conn, err := client.conn.Dial(net, addr)
 	if err != nil {
 		return nil, err
 	}
@@ -515,69 +517,69 @@ func (c *RemoteClient) DialThrough(net, addr string, config *ssh.ClientConfig) (
 }
 
 // Close closes the underlying SSH connection and session.
-func (c *RemoteClient) Close() error {
-	if c.sessOpened {
-		c.sess.Close()
-		c.sessOpened = false
+func (client *RemoteClient) Close() error {
+	if client.sessOpened {
+		client.sess.Close()
+		client.sessOpened = false
 	}
-	if !c.connOpened {
+	if !client.connOpened {
 		return fmt.Errorf("trying to close the already closed connection")
 	}
 
-	err := c.conn.Close()
-	c.connOpened = false
-	c.running = false
+	err := client.conn.Close()
+	client.connOpened = false
+	client.running = false
 
 	return err
 }
 
 // Stdin sets remote stdin
-func (c *RemoteClient) Stdin() io.WriteCloser {
-	return c.remoteStdin
+func (client *RemoteClient) Stdin() io.WriteCloser {
+	return client.remoteStdin
 }
 
 // Stderr sets remote stderr
-func (c *RemoteClient) Stderr() io.Reader {
-	return c.remoteStderr
+func (client *RemoteClient) Stderr() io.Reader {
+	return client.remoteStderr
 }
 
 // Stdout sets remote stdout
-func (c *RemoteClient) Stdout() io.Reader {
-	return c.remoteStdout
+func (client *RemoteClient) Stdout() io.Reader {
+	return client.remoteStdout
 }
 
 // Prefix sets prefix for printing
-func (c *RemoteClient) Prefix() (string, int) {
+func (client *RemoteClient) Prefix() (string, int) {
 	l := kemba.New("gateway::ssh::SSHClient.Prefix").Printf
-	hostName := c.Host
-	if strings.Contains(c.Host, ":") {
-		hostName = c.Host[:strings.Index(c.Host, ":")]
+	hostName := client.Host
+	if strings.Contains(client.Host, ":") {
+		hostName = client.Host[:strings.Index(client.Host, ":")]
 	}
 
-	host := c.User + "@" + hostName
+	host := client.User + "@" + hostName
 	// host := "@" + hostName
 	l("host: %s", host)
-	return c.Color + host + entity.ResetColor + " " + "|" + " ", len(host) + 3
+	return client.Color + host + entity.ResetColor + " " + "|" + " ", len(host) + 3
 }
 
-func (c *RemoteClient) Write(p []byte) (n int, err error) {
-	if c.remoteStdin == nil {
+func (client *RemoteClient) Write(p []byte) (n int, err error) {
+	if client.remoteStdin == nil {
 		return 0, fmt.Errorf("failed write, session is not open")
 	}
-	return c.remoteStdin.Write(p)
+	return client.remoteStdin.Write(p)
 }
 
 // WriteClose well, writeCloser for client
-func (c *RemoteClient) WriteClose() error {
-	if c.remoteStdin == nil {
+func (client *RemoteClient) WriteClose() error {
+	if client.remoteStdin == nil {
 		return fmt.Errorf("failed close, session is not open")
 	}
-	return c.remoteStdin.Close()
+	return client.remoteStdin.Close()
 }
 
 // Signal process command signals
-func (c *RemoteClient) Signal(sig os.Signal) error {
-	if !c.sessOpened {
+func (client *RemoteClient) Signal(sig os.Signal) error {
+	if !client.sessOpened {
 		return fmt.Errorf("session is not open")
 	}
 
@@ -588,12 +590,12 @@ func (c *RemoteClient) Signal(sig os.Signal) error {
 		// which sounds like something that should be fixed/resolved
 		// upstream in the golang.org/x/crypto/ssh pkg.
 		// https://github.com/golang/go/issues/4115#issuecomment-66070418
-		if c.remoteStdin == nil {
+		if client.remoteStdin == nil {
 			return fmt.Errorf("failed write signal, session is not open")
 		}
 
-		c.remoteStdin.Write([]byte("\x03"))
-		return c.sess.Signal(ssh.SIGINT)
+		client.remoteStdin.Write([]byte("\x03"))
+		return client.sess.Signal(ssh.SIGINT)
 	default:
 		return fmt.Errorf("%v not supported", sig)
 	}
@@ -618,16 +620,16 @@ func (c *RemoteClient) Signal(sig os.Signal) error {
 // }
 
 // buildRemoteCommand constructs the command string to be run on the remote host.
-func (c *RemoteClient) buildRemoteCommand(task entity.Task) string {
+func (client *RemoteClient) buildRemoteCommand(task entity.Task) string {
 	l := kemba.New("SSHClient.build_remote_command").Printf
 
 	command := task.Run
-	sudo := task.Sudo
-	sudoPassword := c.Password
-	Env := c.Env
+	isSudo := task.Sudo
+	sudoPassword := client.Password
+	Env := client.Env
 
-	finalEnv := svc.InjectNamespacesAndEnvs(task, *Env, c)
-	command = svc.FormatCommandBasedOnSudo(sudo, sudoPassword, finalEnv, command, c, task, false)
+	finalEnv := ns.InjectNamespacesAndEnvs(task, *Env, client)
+	command = sudo.FormatCommandBasedOnSudo(isSudo, sudoPassword, finalEnv, command, client, task, false)
 
 	l("done building command")
 	return command
