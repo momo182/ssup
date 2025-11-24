@@ -10,6 +10,7 @@ import (
 	"github.com/clok/kemba"
 	"github.com/pkg/sftp"
 	"github.com/pterm/pterm"
+	"gomodules.xyz/envsubst"
 )
 
 // Download file from remote
@@ -33,6 +34,20 @@ func (c *RemoteClient) Download(remotePath, localPath string, silent bool, flat 
 		localPath = filepath.Join(homeDir, localPath[2:])
 	}
 
+	// handle the $SUP_HOST env variable
+	envs := c.Env.GetStore()
+	if strings.Contains(localPath, "$") {
+		l("processing evsubst for command desc:")
+		l(localPath)
+		source := localPath
+		dest, err := envsubst.EvalMap(source, envs)
+		if err != nil {
+			return err
+		}
+		l("line after subst:")
+		l(dest)
+		localPath = dest
+	}
 	l("Will download from:", remotePath)
 	l("Will download to:", localPath)
 
