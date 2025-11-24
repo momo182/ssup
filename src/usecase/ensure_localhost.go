@@ -3,10 +3,10 @@ package usecase
 import (
 	"github.com/clok/kemba"
 	"github.com/gookit/goutil/strutil"
-	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/entity/supfile"
 )
 
-func EnsureLocalhost(supFile *entity.Supfile) {
+func EnsureLocalhost(supFile *supfile.Supfile) {
 	l := kemba.New("usecase::ensure_localhost").Printf
 	var gotLocal bool = false
 	for _, net := range supFile.Networks.Nets {

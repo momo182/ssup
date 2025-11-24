@@ -1,5 +1,9 @@
 package entity
 
+import (
+	supfile "github.com/momo182/ssup/src/entity/supfile"
+)
+
 type PlayBook struct {
 	plays      []Play
 	isMakefile bool
@@ -22,6 +26,6 @@ func (p *PlayBook) IsMakefileMode() bool {
 }
 
 type Play struct {
-	Network  *Network
-	Commands []*Command
+	Network  *supfile.Network
+	Commands []*supfile.Command
 }

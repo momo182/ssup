@@ -11,10 +11,11 @@ import (
 	"github.com/gookit/goutil/cliutil"
 	"github.com/mikkeloscar/sshconfig"
 	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/entity/supfile"
 	// appinit "github.com/momo182/ssup/src/usecase/appinit"
 )
 
-func CheckInitialArgs(network *entity.Network, initialArgs *entity.InitialArgs) {
+func CheckInitialArgs(network *supfile.Network, initialArgs *entity.InitialArgs) {
 	l := kemba.New("usecase::CheckInitialArgs").Printf
 
 	l("--only flag filters hosts")
@@ -34,7 +35,7 @@ func CheckInitialArgs(network *entity.Network, initialArgs *entity.InitialArgs) 
 
 }
 
-func checkSSHConfig(network *entity.Network, initialArgs *entity.InitialArgs) {
+func checkSSHConfig(network *supfile.Network, initialArgs *entity.InitialArgs) {
 	l := kemba.New("usecase > checkSSHConfig").Printf
 
 	l("sshconfig: %s", initialArgs.SSHConfig)
@@ -59,7 +60,7 @@ func checkSSHConfig(network *entity.Network, initialArgs *entity.InitialArgs) {
 			network.User = conf.User
 			network.IdentityFile = ResolvePath(conf.IdentityFile)
 			hostPort := []string{fmt.Sprintf("%s:%d", conf.HostName, conf.Port)}
-			host := entity.NetworkHost{
+			host := supfile.NetworkHost{
 				Host: hostPort[0],
 			}
 			network.Hosts = append(network.Hosts, host)
@@ -67,7 +68,7 @@ func checkSSHConfig(network *entity.Network, initialArgs *entity.InitialArgs) {
 	}
 }
 
-func checkExceptHosts(network *entity.Network, initialArgs *entity.InitialArgs) {
+func checkExceptHosts(network *supfile.Network, initialArgs *entity.InitialArgs) {
 	l := kemba.New("usecase > checkExceptHosts").Printf
 	l("prep regexp for --except")
 	expr, err := regexp.CompilePOSIX(initialArgs.ExceptHosts)
@@ -77,7 +78,7 @@ func checkExceptHosts(network *entity.Network, initialArgs *entity.InitialArgs) 
 	}
 
 	l("range over hosts and check for host not present")
-	var hosts []entity.NetworkHost
+	var hosts []supfile.NetworkHost
 	for _, host := range network.Hosts {
 		if !expr.MatchString(host.Host) {
 			hosts = append(hosts, host)
@@ -91,7 +92,7 @@ func checkExceptHosts(network *entity.Network, initialArgs *entity.InitialArgs) 
 	network.Hosts = hosts
 }
 
-func checkOnlyHosts(network *entity.Network, initialArgs *entity.InitialArgs) {
+func checkOnlyHosts(network *supfile.Network, initialArgs *entity.InitialArgs) {
 	l := kemba.New("usecase > checkOnlyHosts").Printf
 	l("prep regexp for --only")
 	expr, err := regexp.CompilePOSIX(initialArgs.OnlyHosts)
@@ -101,7 +102,7 @@ func checkOnlyHosts(network *entity.Network, initialArgs *entity.InitialArgs) {
 	}
 
 	l("range over hosts and check for host present")
-	var hosts []entity.NetworkHost
+	var hosts []supfile.NetworkHost
 	for _, host := range network.Hosts {
 		if expr.MatchString(host.Host) {
 			hosts = append(hosts, host)

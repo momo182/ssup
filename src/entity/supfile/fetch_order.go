@@ -1,4 +1,4 @@
-package entity
+package supfile
 
 type DownloadOrder struct {
 	Host string `yaml:"host"`

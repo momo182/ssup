@@ -6,7 +6,7 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/gookit/goutil/strutil"
-	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/entity/supfile"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -14,7 +14,7 @@ var KeyAuth ssh.AuthMethod
 
 // SetupAuthMethods returns the authentication methods to use
 // when connecting to a remote server
-func SetupAuthMethods(host entity.NetworkHost) []ssh.AuthMethod {
+func SetupAuthMethods(host supfile.NetworkHost) []ssh.AuthMethod {
 	l := kemba.New("lobby::checksshpass::SetupAuthMethods").Println
 	password := host.Password
 

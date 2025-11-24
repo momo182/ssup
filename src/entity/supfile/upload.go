@@ -1,4 +1,4 @@
-package entity
+package supfile
 
 // UploadOrder represents file copy operation from localhost Src path to Dst
 // path of every host in a given Network.

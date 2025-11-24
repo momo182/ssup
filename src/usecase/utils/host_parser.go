@@ -1,4 +1,4 @@
-package entity
+package utils
 
 import (
 	"bufio"
@@ -11,8 +11,52 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/goforj/godump"
+	"github.com/gookit/goutil/strutil"
+	consts "github.com/momo182/ssup/src/entity/consts"
 	"github.com/samber/oops"
 )
+
+func FindPasswordStart(host string) int {
+	r := -1
+	r = findAndStepOverKey(r, host, consts.PassSeparator)
+	return r
+}
+
+func FindPasswordEnd(host string) int {
+	r := len(host)
+	if strutil.ContainsOne(host, []string{consts.TubeNameSeparator}) {
+		r = strings.Index(host, consts.TubeNameSeparator)
+	}
+	return r
+}
+
+func FindTubeNameStart(host string) int {
+	r := -1
+	r = findAndStepOverKey(r, host, consts.TubeNameSeparator)
+	return r
+}
+
+func FindTubeNameEnd(host string) int {
+	r := len(host)
+	return r
+}
+
+func findAndStepOverKey(r int, input, key string) int {
+	if strutil.ContainsOne(input, []string{key}) {
+		r = strings.Index(input, key)
+		r = r + len(key)
+	}
+	return r
+}
+
+func IsShell(cmd string) bool {
+	var r bool
+	// reverse cmd string
+	if strings.HasPrefix(cmd, "$(") && strings.HasSuffix(cmd, ")") {
+		r = true
+	}
+	return r
+}
 
 func ResolveShell(value string) (string, error) {
 	l := kemba.New("entity::ResolveShell").Printf
@@ -47,15 +91,6 @@ func ResolveShell(value string) (string, error) {
 
 	l("cmd dump:\n%s\nvalue: %s", godump.DumpStr(cmd.Args), clean)
 	return clean, nil
-}
-
-func IsShell(cmd string) bool {
-	var r bool
-	// reverse cmd string
-	if strings.HasPrefix(cmd, "$(") && strings.HasSuffix(cmd, ")") {
-		r = true
-	}
-	return r
 }
 
 // @this original 81A0C135-69EA-4736-AFD4-1D132A2DB91E@

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/entity/supfile"
 	"github.com/momo182/ssup/src/usecase"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,19 +25,19 @@ func TestAppendCommandEnvsToTask(t *testing.T) {
 				t.Errorf("Expected panic but did not get one")
 			}
 		}()
-		usecase.AppendCommandEnvsToTask(&entity.Command{}, nil)
+		usecase.AppendCommandEnvsToTask(&supfile.Command{}, nil)
 	})
 
 	t.Run("Test Command with No Envs", func(t *testing.T) {
 		task := &entity.Task{}
-		cmd := &entity.Command{}
+		cmd := &supfile.Command{}
 		usecase.AppendCommandEnvsToTask(cmd, task)
 		assert.Equal(t, 0, len(task.Env.Keys()))
 	})
 
 	t.Run("Test Command with Non-Empty Envs", func(t *testing.T) {
 		task := &entity.Task{}
-		cmd := &entity.Command{}
+		cmd := &supfile.Command{}
 		cmd.Env.Set("VAR1", "value1")
 		cmd.Env.Set("VAR2", "value2")
 		usecase.AppendCommandEnvsToTask(cmd, task)
@@ -48,7 +49,7 @@ func TestAppendCommandEnvsToTask(t *testing.T) {
 		task := &entity.Task{}
 		task.Env.Set("VAR1", "old_value1")
 		task.Env.Set("VAR2", "value2")
-		cmd := &entity.Command{}
+		cmd := &supfile.Command{}
 		cmd.Env.Set("VAR1", "new_value1")
 		usecase.AppendCommandEnvsToTask(cmd, task)
 		assert.Equal(t, "new_value1", task.Env.Get("VAR1"))
@@ -57,7 +58,7 @@ func TestAppendCommandEnvsToTask(t *testing.T) {
 
 	t.Run("Test Empty Command and Task Envs", func(t *testing.T) {
 		task := &entity.Task{}
-		cmd := &entity.Command{}
+		cmd := &supfile.Command{}
 		usecase.AppendCommandEnvsToTask(cmd, task)
 		assert.Equal(t, 0, len(task.Env.Keys()))
 	})
@@ -65,7 +66,7 @@ func TestAppendCommandEnvsToTask(t *testing.T) {
 	t.Run("Test Complex Envs", func(t *testing.T) {
 		task := &entity.Task{}
 		task.Env.Set("EXISTING_KEY", "existing_value")
-		cmd := &entity.Command{}
+		cmd := &supfile.Command{}
 		cmd.Env.Set("COMPLEX_KEY_1", "value with spaces")
 		cmd.Env.Set("COMPLEX_KEY_2", "value_with_special_chars!@#$%^&*()")
 		usecase.AppendCommandEnvsToTask(cmd, task)

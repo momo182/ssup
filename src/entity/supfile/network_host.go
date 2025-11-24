@@ -1,10 +1,12 @@
-package entity
+package supfile
 
 import (
 	"fmt"
 
 	"github.com/clok/kemba"
 	"github.com/goforj/godump"
+	consts "github.com/momo182/ssup/src/entity/consts"
+	ucutils "github.com/momo182/ssup/src/usecase/utils"
 	"github.com/samber/oops"
 )
 
@@ -50,10 +52,10 @@ func (n *NetworkHost) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	// check if password is shell resolve case
-	if IsShell(temp.Password) {
+	if ucutils.IsShell(temp.Password) {
 		l("!!! shell resolve case found")
 		var e error
-		temp.Password, e = ResolveShell(temp.Password)
+		temp.Password, e = ucutils.ResolveShell(temp.Password)
 		if e != nil {
 			return e
 		}
@@ -77,10 +79,10 @@ func checkHostsForm(host string) NetworkHost {
 
 	// value of -1 in start positions will indicate
 	// no values for given args/fields
-	passwordStart := findPasswordStart(host)
-	tubeNameStart := findTubeNameStart(host)
-	passwordEnd := findPasswordEnd(host)
-	tubeNameEnd := findTubeNameEnd(host)
+	passwordStart := ucutils.FindPasswordStart(host)
+	tubeNameStart := ucutils.FindTubeNameStart(host)
+	passwordEnd := ucutils.FindPasswordEnd(host)
+	tubeNameEnd := ucutils.FindTubeNameEnd(host)
 	newHost := ""
 	password := ""
 	tube := ""
@@ -105,12 +107,12 @@ func checkHostsForm(host string) NetworkHost {
 		// to get back the value where password ends
 
 		// everything after password start separator is fields
-		newHost = host[:passwordStart-len(PassSeparator)]
+		newHost = host[:passwordStart-len(consts.PassSeparator)]
 
 		// check if tube name start is there or end of the host is the end of the password
 		if tubeNameStart > 0 {
 			l("password > tube name found")
-			passwordEnd = tubeNameStart - len(TubeNameSeparator)
+			passwordEnd = tubeNameStart - len(consts.TubeNameSeparator)
 		} else {
 			l("password > no tube")
 			passwordEnd = len(host)
@@ -126,7 +128,7 @@ func checkHostsForm(host string) NetworkHost {
 		// simple case if start is found end is always len f the host
 		// but first check if newHost was set by password check
 		if newHost == "" {
-			newHost = host[:tubeNameStart-len(TubeNameSeparator)]
+			newHost = host[:tubeNameStart-len(consts.TubeNameSeparator)]
 		}
 		tube = host[tubeNameStart:tubeNameEnd]
 	}
@@ -136,8 +138,8 @@ func checkHostsForm(host string) NetworkHost {
 	result.Tube = tube
 
 	// check if password is shell resolve case
-	if IsShell(result.Password) {
-		pass, e := ResolveShell(result.Password)
+	if ucutils.IsShell(result.Password) {
+		pass, e := ucutils.ResolveShell(result.Password)
 		if e != nil {
 			l(oops.Trace("765212F7-64B0-4974-9A50-E8B8C1807FFE").
 				Hint("resolving password via shell").

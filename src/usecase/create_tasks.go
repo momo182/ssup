@@ -8,6 +8,7 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/entity/supfile"
 
 	"github.com/goforj/godump"
 	"github.com/google/uuid"
@@ -16,7 +17,7 @@ import (
 	"github.com/samber/oops"
 )
 
-func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.EnvList, args *entity.InitialArgs) ([]*entity.Task, error) {
+func CreateTasks(cmd *supfile.Command, clients []entity.ClientFacade, env supfile.EnvList, args *entity.InitialArgs) ([]*entity.Task, error) {
 	l := kemba.New("usecase::create_tasks").Printf
 	var tasks []*entity.Task
 
@@ -72,12 +73,12 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 	// Local command.
 	l("check if local command")
 	if cmd.Local != "" {
-		envStore := new(entity.EnvList)
+		envStore := new(supfile.EnvList)
 		envStore.Set("SUP_HOST", "localhost")
 		local := &localhost.LocalhostClient{
 			Env: envStore,
 		}
-		localHost := entity.NetworkHost{
+		localHost := supfile.NetworkHost{
 			Host: "localhost",
 		}
 		local.Connect(localHost)
@@ -127,7 +128,7 @@ func CreateTasks(cmd *entity.Command, clients []entity.ClientFacade, env entity.
 	return tasks, nil
 }
 
-func AppendCommandEnvsToTask(cmd *entity.Command, task *entity.Task) {
+func AppendCommandEnvsToTask(cmd *supfile.Command, task *entity.Task) {
 	l := kemba.New("usecase::append_command_envs_to_task").Printf
 
 	l("dump: 61B6EDEA-0EA0-4466-95CB-08AEEB7D0258")
@@ -168,7 +169,7 @@ func AppendCommandEnvsToTask(cmd *entity.Command, task *entity.Task) {
 	l("done appending command envs")
 }
 
-func openAndReadFile(cmd *entity.Command) ([]byte, error) {
+func openAndReadFile(cmd *supfile.Command) ([]byte, error) {
 	if cmd == nil {
 		log.Panic("F9793EA0-C5C8-43D8-BEE0-4B9AF4EBE7F8: got null command")
 	}
@@ -192,7 +193,7 @@ func openAndReadFile(cmd *entity.Command) ([]byte, error) {
 	return data, nil
 }
 
-func decorateTaskDetails(args *entity.InitialArgs, task *entity.Task, cmd *entity.Command) {
+func decorateTaskDetails(args *entity.InitialArgs, task *entity.Task, cmd *supfile.Command) {
 	l := kemba.New("usecase::decorate_task_details").Printf
 	if task == nil {
 		fmt.Println("06878814-005A-427D-B810-1B68739837B1: got null task")
@@ -219,7 +220,7 @@ func decorateTaskDetails(args *entity.InitialArgs, task *entity.Task, cmd *entit
 	l(godump.DumpStr(task))
 }
 
-func processClientsInGroups(clients []entity.ClientFacade, cmd *entity.Command, task entity.Task, tasks []*entity.Task) []*entity.Task {
+func processClientsInGroups(clients []entity.ClientFacade, cmd *supfile.Command, task entity.Task, tasks []*entity.Task) []*entity.Task {
 	if cmd == nil {
 		log.Panic("908452A6-8978-4B42-97B1-854673457551: got null command")
 	}

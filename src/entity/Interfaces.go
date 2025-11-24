@@ -4,13 +4,14 @@ import (
 	"io"
 	"os"
 
+	"github.com/momo182/ssup/src/entity/supfile"
 	"golang.org/x/crypto/ssh"
 )
 
 type ClientFacade interface {
 	GetConnection() *ssh.Client
 	GetSSHConfig() *ssh.ClientConfig
-	Connect(host NetworkHost) error
+	Connect(host supfile.NetworkHost) error
 	SetConnection(*ssh.Client)
 	Run(task *Task) error
 	Wait() error
@@ -35,5 +36,5 @@ type ClientFacade interface {
 }
 
 type ArgParserFacade interface {
-	Parse(conf *Supfile, initialArgs *InitialArgs, helpMenu HelpDisplayer) (*PlayBook, error)
+	Parse(conf *supfile.Supfile, initialArgs *InitialArgs, helpMenu HelpDisplayer) (*PlayBook, error)
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/gookit/goutil/fsutil"
 	"github.com/goware/prefixer"
 	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/entity/supfile"
 	clientLocal "github.com/momo182/ssup/src/gateway/localhost"
 	"github.com/momo182/ssup/src/gateway/outrig"
 	clientSSH "github.com/momo182/ssup/src/gateway/ssh"
@@ -24,14 +25,14 @@ import (
 )
 
 type Stackup struct {
-	conf   *entity.Supfile
+	conf   *supfile.Supfile
 	debug  bool
 	prefix bool
 	Args   *entity.InitialArgs
 }
 
 // NewStackup creates a new Stackup instance.
-func NewStackup(conf *entity.Supfile) *Stackup {
+func NewStackup(conf *supfile.Supfile) *Stackup {
 	return &Stackup{
 		conf: conf,
 	}
@@ -116,14 +117,14 @@ func (sup *Stackup) cleanupTempFile(file *os.File) {
 }
 
 // Helper function to connect to the bastion host.
-func (sup *Stackup) ConnectToBastionHostHelper(network *entity.Network) (entity.ClientFacade, error) {
+func (sup *Stackup) ConnectToBastionHostHelper(network *supfile.Network) (entity.ClientFacade, error) {
 	l := kemba.New("uc::Stackup::connectToBastionHostHelper").Printf
 	l("about to connect to bastion:\n%v", network.Hosts)
 	return sup.connectToBastionHost(network) // Assuming this is the actual method on the Stackup struct.
 }
 
 // ConnectToHostsHelper is a helper function to connect to all hosts.
-func (sup *Stackup) ConnectToHostsHelper(network *entity.Network, bastion entity.ClientFacade) ([]entity.ClientFacade, int, []string) {
+func (sup *Stackup) ConnectToHostsHelper(network *supfile.Network, bastion entity.ClientFacade) ([]entity.ClientFacade, int, []string) {
 	l := kemba.New("uc::Stackup::connectToHostsHelper").Printf
 
 	l(godump.DumpStr(network))
@@ -176,7 +177,7 @@ func removeIndex(s []entity.ClientFacade, index int) []entity.ClientFacade {
 }
 
 // Helper function to run a task.
-func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task *entity.Task, cmd *entity.Command, maxLen int, isMakefileMode bool) error {
+func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task *entity.Task, cmd *supfile.Command, maxLen int, isMakefileMode bool) error {
 	l := kemba.New("uc::Stackup::runTask").Printf
 	l("task:\n%v", godump.DumpStr(task))
 	l("clients:\n%v", godump.DumpStr(task.Clients))
@@ -312,7 +313,7 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 }
 
 // Helper function to handle uploads.
-func (sup *Stackup) handleUploads(client entity.ClientFacade, uploads []*entity.UploadOrder) error {
+func (sup *Stackup) handleUploads(client entity.ClientFacade, uploads []*supfile.UploadOrder) error {
 	l := kemba.New("uc::Stackup::handleUploads").Printf
 	for _, upload := range uploads {
 		l("upload command: %v", upload.Src)
@@ -324,7 +325,7 @@ func (sup *Stackup) handleUploads(client entity.ClientFacade, uploads []*entity.
 }
 
 // Helper function to handle downloads.
-func (sup *Stackup) handleDownloads(client entity.ClientFacade, downloads []*entity.DownloadOrder) error {
+func (sup *Stackup) handleDownloads(client entity.ClientFacade, downloads []*supfile.DownloadOrder) error {
 	l := kemba.New("uc::Stackup::handleDownloads").Printf
 	for _, download := range downloads {
 		l("download command: %v", download.Src)
@@ -433,7 +434,7 @@ func (sup *Stackup) getPrefix(client entity.ClientFacade, maxLen int, isMakefile
 	return prefix
 }
 
-func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([]entity.ClientFacade, []string) {
+func connectToHosts(network *supfile.Network, bastion *clientSSH.RemoteClient) ([]entity.ClientFacade, []string) {
 	l := kemba.New("usecase::run::connectToHosts").Printf
 	l("will range over hosts: %v", len(network.Hosts))
 
@@ -520,7 +521,7 @@ func connectToHosts(network *entity.Network, bastion *clientSSH.RemoteClient) ([
 	return clients, errors
 }
 
-func (*Stackup) connectToBastionHost(network *entity.Network) (*clientSSH.RemoteClient, error) {
+func (*Stackup) connectToBastionHost(network *supfile.Network) (*clientSSH.RemoteClient, error) {
 	l := kemba.New("usecase::run::connectToBastionHost").Printf
 
 	l("prepping ssh client to bastion: %s", network.Bastion)

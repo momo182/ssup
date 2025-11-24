@@ -9,6 +9,7 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/goforj/godump"
+	"github.com/momo182/ssup/src/entity/supfile"
 	"github.com/pterm/pterm"
 	"github.com/pterm/pterm/putils"
 )
@@ -21,7 +22,7 @@ type HelpDisplayer struct {
 	Color        bool
 }
 
-func (h *HelpDisplayer) Show(conf *Supfile) {
+func (h *HelpDisplayer) Show(conf *supfile.Supfile) {
 	if h.Color {
 		h.printColoredHelp(conf)
 		return
@@ -29,7 +30,7 @@ func (h *HelpDisplayer) Show(conf *Supfile) {
 	h.printBWHelp(conf)
 }
 
-func (h *HelpDisplayer) ShowAll(conf *Supfile) {
+func (h *HelpDisplayer) ShowAll(conf *supfile.Supfile) {
 	l := kemba.New("entity::HelpDisplayer").Printf
 	l("will display help now")
 	h.ShowNetwork = true
@@ -44,7 +45,7 @@ func (h *HelpDisplayer) ShowAll(conf *Supfile) {
 	h.printBWHelp(conf)
 }
 
-func (h *HelpDisplayer) printColoredHelp(conf *Supfile) {
+func (h *HelpDisplayer) printColoredHelp(conf *supfile.Supfile) {
 	l := kemba.New("entity::printColoredHelp").Printf
 	l("printing intro screen now")
 	// introScreen()
@@ -65,7 +66,7 @@ func (h *HelpDisplayer) printColoredHelp(conf *Supfile) {
 	}
 }
 
-func (h *HelpDisplayer) printBWHelp(conf *Supfile) {
+func (h *HelpDisplayer) printBWHelp(conf *supfile.Supfile) {
 	if h.ShowMakeMode {
 		makefileUsage()
 	}
@@ -103,7 +104,7 @@ func colorMakefileUsage() {
 	pterm.Println()
 }
 
-func colorCmdUsage(conf *Supfile) {
+func colorCmdUsage(conf *supfile.Supfile) {
 	l := kemba.New("entity::colorCmdUsage").Printf
 	if conf.Desc != "" {
 		pterm.Info.Prefix = pterm.Prefix{Text: "Supfile Description:", Style: pterm.NewStyle(pterm.BgCyan, pterm.FgBlack)}
@@ -155,7 +156,7 @@ func colorCmdUsage(conf *Supfile) {
 	pterm.DefaultTable.WithHasHeader(true).WithRowSeparator("-").WithHeaderRowSeparator("-").WithData(targets).Render()
 }
 
-func colorNetworkUsage(conf *Supfile) {
+func colorNetworkUsage(conf *supfile.Supfile) {
 	pterm.Info.Prefix = pterm.Prefix{Text: "Networks:", Style: pterm.NewStyle(pterm.BgCyan, pterm.FgBlack)}
 	pterm.Info.Println(" ")
 	pterm.Println()
@@ -186,7 +187,7 @@ func colorNetworkUsage(conf *Supfile) {
 	}
 }
 
-func cmdUsage(conf *Supfile) {
+func cmdUsage(conf *supfile.Supfile) {
 	w := &tabwriter.Writer{}
 	w.Init(os.Stderr, 4, 4, 2, ' ', 0)
 	defer w.Flush()
@@ -227,7 +228,7 @@ func cmdUsage(conf *Supfile) {
 	fmt.Fprintln(w)
 }
 
-func networkUsage(conf *Supfile) {
+func networkUsage(conf *supfile.Supfile) {
 	w := &tabwriter.Writer{}
 	w.Init(os.Stderr, 4, 4, 2, ' ', 0)
 	defer w.Flush()
