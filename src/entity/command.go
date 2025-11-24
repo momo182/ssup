@@ -11,17 +11,17 @@ import (
 
 // Command represents command(s) to be run remotely.
 type Command struct {
-	Name     string           `yaml:"-"`      // Command name.
-	Desc     string           `yaml:"desc"`   // Command description.
-	Local    string           `yaml:"local"`  // Command(s) to be run locally.
-	Run      string           `yaml:"run"`    // Command(s) to be run remotelly.
-	Script   string           `yaml:"script"` // Load command(s) from script and run it remotelly.
-	Upload   []*UploadOrder   `yaml:"upload"` // See Upload struct.
-	Stdin    bool             `yaml:"stdin"`  // Attach localhost STDOUT to remote commands' STDIN?
-	Once     bool             `yaml:"once"`   // The command should be run "once" (on one host only).
-	Serial   int              `yaml:"serial"` // Max number of clients processing a task in parallel.
-	Fetch    []*DownloadOrder `yaml:"fetch" ` // See Fetch struct.
-	Sudo     bool             `yaml:"sudo" `  // Run command(s) as root?
+	Name     string           `yaml:"-"`                  // Command name.
+	Desc     string           `yaml:"desc"`               // Command description.
+	Local    string           `yaml:"local"`              // Command(s) to be run locally.
+	Run      string           `yaml:"run"`                // Command(s) to be run remotelly.
+	Script   string           `yaml:"script"`             // Load command(s) from script and run it remotelly.
+	Upload   []*UploadOrder   `yaml:"upload,upl,up"`      // See Upload struct.
+	Stdin    bool             `yaml:"stdin"`              // Attach localhost STDOUT to remote commands' STDIN?
+	Once     bool             `yaml:"once"`               // The command should be run "once" (on one host only).
+	Serial   int              `yaml:"serial"`             // Max number of clients processing a task in parallel.
+	Fetch    []*DownloadOrder `yaml:"fetch,download,dl" ` // See Fetch struct.
+	Sudo     bool             `yaml:"sudo" `              // Run command(s) as root?
 	SudoPass string           `yaml:"sudo_pass"`
 	Env      EnvList          `yaml:"env"`
 	Dist     string           `yaml:"dist"`
