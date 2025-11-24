@@ -7,7 +7,6 @@ import (
 	"github.com/clok/kemba"
 	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/entity"
-	"github.com/pkg/errors"
 	"github.com/samber/oops"
 )
 
@@ -51,7 +50,11 @@ func ResolveValues(e *entity.EnvList) error {
 		cmd.Dir = cwd
 		resolvedValue, err := cmd.Output()
 		if err != nil {
-			return errors.Wrapf(err, "resolving env var %v failed", v.Key)
+			// workaround for COLORFGBG=15;0 case
+			if err.Error() == "exit status 127" {
+				continue
+			}
+			// return errors.Wrapf(err, "resolving env var %v failed", v.Key)
 		}
 
 		e.Set(key, string(resolvedValue))
