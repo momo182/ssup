@@ -1,7 +1,6 @@
 package appinit
 
 import (
-	"os"
 	"strings"
 
 	"github.com/clok/kemba"
@@ -15,12 +14,15 @@ func ProcessSupfile(conf *entity.Supfile) error {
 	envs := conf.Env.GetStore()
 
 	envMap := make(map[string]string)
-	for _, env := range os.Environ() {
-		parts := strings.SplitN(env, "=", 2)
-		if len(parts) == 2 {
-			envMap[parts[0]] = parts[1]
-		}
-	}
+
+	// do not add system envs
+
+	// for _, env := range os.Environ() {
+	// 	parts := strings.SplitN(env, "=", 2)
+	// 	if len(parts) == 2 {
+	// 		envMap[parts[0]] = parts[1]
+	// 	}
+	// }
 
 	// append system envs
 	for k, v := range envMap {

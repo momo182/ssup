@@ -170,7 +170,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 		// ENCRYPTION_PASSPHRASE="mystrongpassword" openssl enc -d -aes-256-cbc -pbkdf2 -in ./out.txt   -pass env:ENCRYPTION_PASSPHRASE
 		command = sf.FormatComplex(
 			"cat {hashed_pass_file} "+
-				"| sudo -S {shell} -c \"rm {hashed_pass_file} "+
+				"| sudo -p '' -S {shell} -c \"rm {hashed_pass_file} && sleep 0"+
 				"&& export PATH=\"{home_folder}/.local/ssup/dist:$PATH\""+
 				"&& source {env_file} && echo '## command: {cmd_id}'"+
 				// ^^^^^^ this needs to exist to make sudo prompt go to next line

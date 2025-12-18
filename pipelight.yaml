@@ -5,11 +5,19 @@ pipelines:
       log_level: info
     steps:
       - name: prep folders
-        commands:
+        commands: 
           - mkdir -pv ./bin
           - rm -fv ./bin/*
       - name: build bin
         commands:
+          - |
+            echo "setting version";
+            export BUILD_VER=$(git describe --tags --always --dirty);
+            export BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ');
+            cat > src/entity/consts/version.go << EOF
+            package consts
+            const VERSION = "${BUILD_VER}@${BUILD_DATE}"
+            EOF
           - go build -o ./bin/ssup ./cmd/ssup && echo "build OK!"
       - name: install bin
         commands:
