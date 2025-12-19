@@ -54,10 +54,10 @@ func addSSUPDefaultEnvs(network *entity.Network, args []string) {
 		network.Env.Set("SUP_TIME", os.Getenv("SUP_TIME"))
 	}
 
-	l("add user")
-	if os.Getenv("SUP_USER") != "" {
-		network.Env.Set("SUP_USER", os.Getenv("SUP_USER"))
-	} else {
-		network.Env.Set("SUP_USER", os.Getenv("USER"))
-	}
+	// l("add user")
+	// if os.Getenv("SUP_USER") != "" {
+	// 	network.Env.Set("SUP_USER", os.Getenv("SUP_USER"))
+	// } else {
+	// 	network.Env.Set("SUP_USER", os.Getenv("USER"))
+	// }
 }

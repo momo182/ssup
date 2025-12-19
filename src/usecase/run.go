@@ -192,9 +192,10 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 	// Флаг для отслеживания, была ли ошибка и отмена уже инициирована
 	var canceled int32 // 0 = false, 1 = true
 
-	setCanceled := func() {
+	setCanceled := func(err error) {
 		if atomic.CompareAndSwapInt32(&canceled, 0, 1) {
 			l("Canceling context due to error")
+			l("upload failed: %v", err.Error())
 			cancel() // Отменяем контекст при первой ошибке
 		}
 	}
@@ -215,7 +216,7 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 		// Handle uploads if any.
 		l("handling uploads for %s", c.GetHost())
 		if err := sup.handleUploads(c, cmd.Upload); err != nil {
-			setCanceled() // Отменяем при ошибке загрузки
+			setCanceled(err) // Отменяем при ошибке загрузки
 			// Не возвращаем сразу, даем возможность запустить другие клиенты или дождаться уже запущенных
 			continue // Или break если нужно остановить обработку других клиентов в этом runTask
 		}
@@ -246,7 +247,7 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 
 		if doDistCopy {
 			if err := c.CopyDistFolders(); err != nil {
-				setCanceled() // Отменяем при ошибке загрузки
+				setCanceled(err) // Отменяем при ошибке загрузки
 				// Не возвращаем сразу, даем возможность запустить другие клиенты или дождаться уже запущенных
 				break // Или break если нужно остановить обработку других клиентов в этом runTask
 			}
@@ -303,7 +304,7 @@ func (sup *Stackup) runTask(ctx context.Context, cancel context.CancelFunc, task
 
 		l("handling fetch for %s", c.GetHost())
 		if err := sup.handleDownloads(c, cmd.Fetch); err != nil {
-			setCanceled() // Отменяем при ошибке загрузки
+			setCanceled(err) // Отменяем при ошибке загрузки
 			// Не возвращаем сразу, даем возможность запустить другие клиенты или дождаться уже запущенных
 			continue // Или break если нужно остановить обработку других клиентов в этом runTask
 		}

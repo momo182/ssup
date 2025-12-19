@@ -169,8 +169,8 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 		l("wrapping command into SUDO block:")
 		// ENCRYPTION_PASSPHRASE="mystrongpassword" openssl enc -d -aes-256-cbc -pbkdf2 -in ./out.txt   -pass env:ENCRYPTION_PASSPHRASE
 		command = sf.FormatComplex(
-			"cat {hashed_pass_file} "+
-				"| sudo -p '' -S {shell} -c \"rm {hashed_pass_file} && sleep 0"+
+			"mkdir -p '{home_folder}/.local/ssup/dist'; cat {hashed_pass_file} "+
+				"| sudo -p '' -S {shell} -c \"rm {hashed_pass_file} && sleep 0 && chmod -R 0755 '{home_folder}/.local/ssup/dist'"+
 				"&& export PATH=\"{home_folder}/.local/ssup/dist:$PATH\""+
 				"&& source {env_file} && echo '## command: {cmd_id}'"+
 				// ^^^^^^ this needs to exist to make sudo prompt go to next line
@@ -187,7 +187,7 @@ func FormatCommandBasedOnSudo(sudo bool, sudoPassword string, Env entity.EnvList
 
 	default:
 		l("wrapping command into normal block:")
-		command = sf.FormatComplex("{shell} -c 'export PATH=\"{home_folder}/.local/ssup/dist:$PATH\" && source {env_file} && chmod +x {main_script} && echo \"## command: {cmd_id}\" && {main_script} || export SSUP_TASK_FAIL=$?; rm -rf {home_folder}/{removal_mask}; if [ -n \"$SSUP_TASK_FAIL\" ];then exit $SSUP_TASK_FAIL;fi'", data)
+		command = sf.FormatComplex("{shell} -c 'export PATH=\"{home_folder}/.local/ssup/dist:$PATH\" && mkdir -p '{home_folder}/.local/ssup/dist' && chmod -R 0755 '{home_folder}/.local/ssup/dist' && source {env_file} && chmod +x {main_script} && echo \"## command: {cmd_id}\" && {main_script} || export SSUP_TASK_FAIL=$?; rm -rf {home_folder}/{removal_mask}; if [ -n \"$SSUP_TASK_FAIL\" ];then exit $SSUP_TASK_FAIL;fi'", data)
 		generateBaselineStartSet()
 	}
 

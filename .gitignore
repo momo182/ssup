@@ -2,6 +2,7 @@ bin/
 *.sw?
 .vscode/
 .vscode/bookmarks.json
+src/entity/consts/version.go
 dist/*
 Supfile.yml
 .pipelight/

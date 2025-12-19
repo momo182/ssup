@@ -17,6 +17,7 @@ import (
 	"github.com/momo182/ssup/src/entity"
 	keys "github.com/momo182/ssup/src/gateway/keyauthprovider"
 	ns "github.com/momo182/ssup/src/gateway/namespace"
+	"github.com/momo182/ssup/src/gateway/outrig"
 	sudo "github.com/momo182/ssup/src/gateway/sudo_formatter"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
@@ -177,6 +178,7 @@ func (client *RemoteClient) Connect(host entity.NetworkHost) error {
 		Auth:            authMethods,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
+	outrig.Push("gw::ssh::Connect.ClientConfig", config)
 	// l(godump.DumpStr(config))
 
 	l("creating connect order")
@@ -326,6 +328,7 @@ func (c *RemoteClient) Run(task *entity.Task) error {
 		for _, key := range task.Env.Keys() {
 			c.Env.Set(key, task.Env.Get(key))
 		}
+		c.Env.Set("SUP_USER", c.User)
 	}
 
 	l("setting pipes")
