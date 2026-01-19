@@ -683,7 +683,7 @@ you should now be able to use sup with your ssh key.
 
     fork it, hack it..
 
-    $ make build
+    $ pipelight run build --attach -vvv
 
     create new Pull Request
 

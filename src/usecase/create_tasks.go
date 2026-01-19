@@ -11,7 +11,6 @@ import (
 	"github.com/momo182/ssup/src/entity/supfile"
 
 	"github.com/goforj/godump"
-	"github.com/google/uuid"
 	"github.com/momo182/ssup/src/gateway/localhost"
 	"github.com/pkg/errors"
 	"github.com/samber/oops"
@@ -45,14 +44,11 @@ func CreateTasks(cmd *supfile.Command, clients []entity.ClientFacade, env supfil
 		if err != nil {
 			return nil, err
 		}
-
-		u := uuid.New()
-
 		task := entity.Task{
 			Run:  string(data),
 			TTY:  cmd.Stdin,
 			Sudo: cmd.Sudo,
-			Id:   u.String(),
+			Id:   cmd.Name,
 			Dist: cmd.Dist,
 		}
 
@@ -82,13 +78,12 @@ func CreateTasks(cmd *supfile.Command, clients []entity.ClientFacade, env supfil
 			Host: "localhost",
 		}
 		local.Connect(localHost)
-		u := uuid.New()
 		task := &entity.Task{
 			Run:     cmd.Local,
 			Clients: []entity.ClientFacade{local},
 			TTY:     cmd.Stdin,
 			Env:     env,
-			Id:      u.String(),
+			Id:      cmd.Name,
 			Dist:    cmd.Dist,
 		}
 
@@ -100,13 +95,12 @@ func CreateTasks(cmd *supfile.Command, clients []entity.ClientFacade, env supfil
 	// Remote command.
 	l("check if remote command")
 	if cmd.Run != "" {
-		u := uuid.New()
 		task := entity.Task{
 			Run:  cmd.Run,
 			TTY:  cmd.Stdin,
 			Sudo: cmd.Sudo,
 			Env:  env,
-			Id:   u.String(),
+			Id:   cmd.Name,
 			Dist: cmd.Dist,
 		}
 

@@ -32,14 +32,6 @@ func main() {
 	// tell outrig what we have
 	outrig.Push("main_command_args", entity.InitialArgsStore)
 
-	l("reading supfile")
-	conf := appinit.ReadSupfile(entity.InitialArgsStore)
-	if err := unpackInventories(conf); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	appinit.ProcessSupfile(conf)
-
 	// now if anyone wants some help
 	if entity.InitialArgsStore.ShowHelp {
 		fmt.Fprintln(os.Stderr, entity.ErrUsage, "\n\nOptions:")
@@ -56,6 +48,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, entity.VERSION)
 		return
 	}
+
+	l("reading supfile")
+	conf := appinit.ReadSupfile(entity.InitialArgsStore)
+	if err := unpackInventories(conf); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	appinit.ProcessSupfile(conf)
 
 	l("4685D4CC-E39C-49E7-A842-5ECEF446826A: supfile after inv process")
 	l("%s", conf)
