@@ -33,8 +33,9 @@ commands:
       file ~/git/footgbot/target/x86_64-unknown-linux-gnu/release/footgbot
 
   upload:
-    local: |
-      rsync -avzh ~/git/footgbot/target/x86_64-unknown-linux-gnu/release/footgbot sudo_user@example.pvt:footgbot
+    upload:
+    - src: ~/git/footgbot/target/x86_64-unknown-linux-gnu/release/footgbot
+      dst: ~/footgbot
 
   setup:
     desc: move footgbot to right place on remote
