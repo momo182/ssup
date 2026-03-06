@@ -1,11 +1,11 @@
 # env vars templating
 
-env vars are templated in description when running ssup without args.  
-this is to reflect key vars inside description at a glance.  
+env vars are templated in descriptions when running ssup without args.  
+this allows to reflect final values of vars inside a description of command/supfile at a glance.  
 
 ## how to use
 
-templating is done by running envsubst package over desc text.
+templating is done by running envsubst package over desc text.  
 https://pkg.go.dev/gomodules.xyz/envsubst  
 the format is `${SOME_VAR}` not `$SOME_VAR`  
 

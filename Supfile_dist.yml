@@ -2,99 +2,100 @@
 version: 0.5
 desc: tools to build and publish released binaries
 env:
-  OUTPUT_DIR: dist
+    OUTPUT_DIR: dist
+    TAG: v0.7.0
 commands:
-  build_release:
-    desc: |
-      cross compiles for macos and linux
-      - x86_64-linux-gnu
-      - aarch64-linux-gnu
-      - x86_64-macos-gnu
-      - aarch64-macos-gnu
-      - x86_64-windows-gnu
-      - aarch64-windows-gnu
-    local: |
-      rm -rvf "$OUTPUT_DIR"
-      mkdir -p "$OUTPUT_DIR"
+    build_release:
+        desc: |
+            cross compiles for macos and linux
+            - x86_64-linux-gnu
+            - aarch64-linux-gnu
+            - x86_64-macos-gnu
+            - aarch64-macos-gnu
+            - x86_64-windows-gnu
+            - aarch64-windows-gnu
+        local: |
+            rm -rvf "$OUTPUT_DIR"
+            mkdir -p "$OUTPUT_DIR"
 
-      echo "Building for arm64 macos"
-      export ARCH="aarch64-macos-gnu"
-      export CC="zig cc -target ${ARCH}"
-      export CXX="zig c++ -target ${ARCH}"
-      export GOOS=darwin 
-      export GOARCH=arm64
-      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
-      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
-      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            echo "Building for arm64 macos"
+            export ARCH="aarch64-macos-gnu"
+            export CC="zig cc -target ${ARCH}"
+            export CXX="zig c++ -target ${ARCH}"
+            export GOOS=darwin
+            export GOARCH=arm64
+            export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
+            file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
 
-      echo "Building for amd64 macos"
-      export ARCH="x86_64-macos-gnu"
-      export CC="zig cc -target ${ARCH}"
-      export CXX="zig c++ -target ${ARCH}"
-      export GOOS=darwin 
-      export GOARCH=amd64
-      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
-      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
-      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            echo "Building for amd64 macos"
+            export ARCH="x86_64-macos-gnu"
+            export CC="zig cc -target ${ARCH}"
+            export CXX="zig c++ -target ${ARCH}"
+            export GOOS=darwin
+            export GOARCH=amd64
+            export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
+            file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
 
-      echo "Building for arm64 linux"
-      export ARCH="aarch64-linux-gnu"
-      export CC="zig cc -target ${ARCH}"
-      export CXX="zig c++ -target ${ARCH}"
-      export GOOS=linux 
-      export GOARCH=arm64
-      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
-      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup 
-      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            echo "Building for arm64 linux"
+            export ARCH="aarch64-linux-gnu"
+            export CC="zig cc -target ${ARCH}"
+            export CXX="zig c++ -target ${ARCH}"
+            export GOOS=linux
+            export GOARCH=arm64
+            export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
+            file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
 
-      echo "Building for amd64 linux"
-      export ARCH="x86_64-linux-gnu"
-      export CC="zig cc -target ${ARCH}"
-      export CXX="zig c++ -target ${ARCH}"
-      export GOOS=linux 
-      export GOARCH=amd64
-      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
-      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
-      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            echo "Building for amd64 linux"
+            export ARCH="x86_64-linux-gnu"
+            export CC="zig cc -target ${ARCH}"
+            export CXX="zig c++ -target ${ARCH}"
+            export GOOS=linux
+            export GOARCH=amd64
+            export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
+            file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
 
-      echo "Building for arm64 windows"
-      export ARCH="aarch64-linux-gnu"
-      export CC="zig cc -target ${ARCH}"
-      export CXX="zig c++ -target ${ARCH}"
-      export GOOS=windows 
-      export GOARCH=arm64
-      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
-      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup 
-      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            echo "Building for arm64 windows"
+            export ARCH="aarch64-linux-gnu"
+            export CC="zig cc -target ${ARCH}"
+            export CXX="zig c++ -target ${ARCH}"
+            export GOOS=windows
+            export GOARCH=arm64
+            export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
+            file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
 
-      echo "Building for amd64 windows"
-      export ARCH="x86_64-linux-gnu"
-      export CC="zig cc -target ${ARCH}"
-      export CXX="zig c++ -target ${ARCH}"
-      export GOOS=windows 
-      export GOARCH=amd64
-      export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
-      CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
-      file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            echo "Building for amd64 windows"
+            export ARCH="x86_64-linux-gnu"
+            export CC="zig cc -target ${ARCH}"
+            export CXX="zig c++ -target ${ARCH}"
+            export GOOS=windows
+            export GOARCH=amd64
+            export OUTPUT="$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
+            CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
+            file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
 
-      tree ./build
-  publish_release:
-    env:
-      RELEASE_BODY: $(nu -c "open ./changes/changes_0.6.0.yml | get changelog | to text")
-      REPO: momo182/ssup
-      TAG: v0.6.0
-      RELEASE_NAME: Release $TAG
-      ASSETS_DIR: ./dist
-    desc: publish resease on GH using gh tool
-    local: |
-      echo "${RELEASE_BODY}"
-      exit 0
-      #shellcheck disable=SC2317
-      gh release create "$TAG" "$ASSETS_DIR/*" \
-      --repo "$REPO" \
-      --title "$RELEASE_NAME" \
-      --notes "$RELEASE_BODY"
+            tree ./build
+
+    publish_release:
+        env:
+            RELEASE_BODY: $(nu -c "open ./changes/changes_0.6.0.yml | get changelog | to text")
+            REPO: momo182/ssup
+            RELEASE_NAME: Release $TAG
+            ASSETS_DIR: ./dist
+        desc: publish resease on GH using gh tool
+        local: |
+            echo "${RELEASE_BODY}"
+            exit 0
+            #shellcheck disable=SC2317
+            gh release create "$TAG" "$ASSETS_DIR/*" \
+            --repo "$REPO" \
+            --title "$RELEASE_NAME" \
+            --notes "$RELEASE_BODY"
 targets:
-  do_release:
-  - build_release
-  - publish_release
+    do_release:
+        - build_release
+        - publish_release
