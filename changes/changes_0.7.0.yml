@@ -2,4 +2,4 @@ changelog:
     - "rename source:// to include:// to be visually more clear from bash source"
     - "fixed example supfile whitespace"
     - "fixed incorrect copy of file to dist when running on localhost"
-    - TODO do proper error control when sourcing files that are not...
+    - do proper error control when sourcing files that are missing
