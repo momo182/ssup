@@ -1,6 +1,8 @@
 package supfile
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/clok/kemba"
@@ -111,6 +113,14 @@ func (c *Commands) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
 // processSourceLinks will scanthrough lines and replace
 // the `#include://` links with the actual content.
 func processSourceLinks(rawCommand string) string {
@@ -121,16 +131,20 @@ func processSourceLinks(rawCommand string) string {
 	for _, line := range rawLines {
 		if strings.HasPrefix(line, sourceDirective) {
 			l("matched line: %s", line)
-			file := strings.TrimPrefix(line, sourceDirective)
-			if strings.Contains(file, "#") {
+			file_path := strings.TrimPrefix(line, sourceDirective)
+			if strings.Contains(file_path, "#") {
 				// must have a # comment behind the value
 				// will have to strip the # comment
 				// by searching for the # comment location and
 				// trimming the length of the value
-				location := strings.Index(file, "#")
-				file = file[:location]
+				location := strings.Index(file_path, "#")
+				file_path = file_path[:location]
 			}
-			data := fsutil.ReadString(file)
+			if !fileExists(file_path) {
+				fmt.Printf("include:// directive file is missing\n file path: %s\n", file_path)
+				os.Exit(1)
+			}
+			data := fsutil.ReadString(file_path)
 			l("after:\n%s", "'"+strutil.FirstLine(data)+"'")
 
 			result = append(result, []byte(data+"\n")...)
