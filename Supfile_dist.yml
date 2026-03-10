@@ -78,20 +78,20 @@ commands:
             CGO_ENABLED=1 go build -o "$OUTPUT" ./cmd/ssup
             file "$OUTPUT_DIR/ssup-$GOOS-$GOARCH"
 
-            tree ./build
+            tree $OUTPUT_DIR
 
     publish_release:
         env:
-            RELEASE_BODY: $(nu -c "open ./changes/changes_0.6.0.yml | get changelog | to text")
+            RELEASE_BODY: $(nu -c "open ./changes/changes_0.7.0.yml | get changelog | to text")
             REPO: momo182/ssup
             RELEASE_NAME: Release $TAG
-            ASSETS_DIR: ./dist
         desc: publish resease on GH using gh tool
         local: |
+            set -x
             echo "${RELEASE_BODY}"
-            exit 0
+            echo "safety fallback"; exit 0
             #shellcheck disable=SC2317
-            gh release create "$TAG" "$ASSETS_DIR/*" \
+            gh release create "$TAG" "$OUTPUT_DIR/*" \
             --repo "$REPO" \
             --title "$RELEASE_NAME" \
             --notes "$RELEASE_BODY"

@@ -7,6 +7,7 @@ import (
 
 	"github.com/clok/kemba"
 	"github.com/momo182/ssup/src/entity"
+	"github.com/momo182/ssup/src/usecase/envs_resolve"
 )
 
 // GenerateSUPENVFrom generates the SUP_ENV environment variable
@@ -49,13 +50,13 @@ func SetEnvValues(vars *entity.EnvList, initialArgs *entity.InitialArgs) {
 // MergeVars merges two entity.EnvList lists, one from supfile and one from network,
 // resolves the values of the environment variables with shell substitution, and
 // returns the merged list of environment variables
-func MergeVars(conf *entity.Supfile, network *entity.Network) entity.EnvList {
+func MergeVars(supFile *entity.Supfile, network *entity.Network) entity.EnvList {
 	l := kemba.New("usecase::MergeVars").Printf
 	var mergedVars entity.EnvList
 
 	l("copyng from config")
-	for _, key := range conf.Env.Keys() {
-		value := conf.Env.Get(key)
+	for _, key := range supFile.Env.Keys() {
+		value := supFile.Env.Get(key)
 		// Add the environment variable to the vars list
 		l("adding conf env var: %v = %v ", key, value)
 		mergedVars.Set(key, value)
@@ -70,10 +71,10 @@ func MergeVars(conf *entity.Supfile, network *entity.Network) entity.EnvList {
 
 	// Resolve the values in the vars list
 	l("resolving env vars via shell")
-	if err := ResolveValues(&mergedVars); err != nil {
+	if err := envs_resolve.ResolveValues(&mergedVars); err != nil {
 		// If there is an error, print it to the standard error output and exit with code 1
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(46)
+		os.Exit(2)
 	}
 
 	// Return the vars list

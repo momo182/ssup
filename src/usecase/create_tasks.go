@@ -12,6 +12,7 @@ import (
 
 	"github.com/goforj/godump"
 	"github.com/momo182/ssup/src/gateway/localhost"
+	"github.com/momo182/ssup/src/usecase/envs_resolve"
 	"github.com/pkg/errors"
 	"github.com/samber/oops"
 )
@@ -154,6 +155,10 @@ func AppendCommandEnvsToTask(cmd *supfile.Command, task *entity.Task) {
 		value := source.Get(key)
 		l("got value: %s", value)
 		task.Env.Set(key, value)
+	}
+	if err := envs_resolve.ResolveValues(&task.Env); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
 	}
 
 	l("dump: 65589739-F0F5-4D96-A535-07684F4F5CC0")

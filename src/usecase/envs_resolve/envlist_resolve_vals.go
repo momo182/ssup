@@ -1,4 +1,4 @@
-package appinit
+package envs_resolve
 
 import (
 	"os"
