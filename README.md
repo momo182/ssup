@@ -48,9 +48,9 @@ to deploy to and a copule of tasks to copy the app there and launch it.
 It's bearable to use long form, with host and task for a few first times, while you're  
 polishing your process of building and deploying, but it would be nice and KISS to actually type less  
 to achieve the same results.  
-Original sup has [targets:] to do just that, run a bunch of commands grouped to a single invocation,  
+Original sup has [targets:](docs/base/targets.md) to do just that, run a bunch of commands grouped to a single invocation,  
 but you still have to specify a network as an argument, but i'm too lazy to do that every time.
-Here a mod comes into play, in ssup, when defining [targets:]  
+Here a mod comes into play, in ssup, when defining [targets:](docs/base/targets.md)  
 you can bind a certain command to the network you need.
 
 ```yml
@@ -103,8 +103,15 @@ $ go get -u github.com/momo182/ssup/cmd/ssup
 # Usage
 
 ```sh
-$ ssup [OPTIONS] NETWORK COMMAND [...]
+$ ssup [OPTIONS] [NETWORK] COMMAND [...]
 ```
+
+## Supfile sections
+
+- [Networks](docs/base/network.md)
+- [Commands](docs/base/commands.md)
+    - [Makefile mode](docs/mods/makefile.md)
+- [Targets](docs/base/targets.md)
 
 ### Options
 
@@ -122,11 +129,6 @@ $ ssup [OPTIONS] NETWORK COMMAND [...]
 | `-x`               | Print example Supfile to stdout        |
 | `-z`               | Continue execution if one host failed  |
 | `-t`               | Test connections                       |
-
-- [Networks](docs/base/network.md)
-- [Commands](docs/base/commands.md)
-    - [Makefile mode](docs/mods/makefile.md)
-- [Targets](docs/base/targets.md)
 
 
 # Supfile

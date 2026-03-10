@@ -3,7 +3,7 @@ version: 0.5
 desc: tools to build and publish released binaries
 env:
     OUTPUT_DIR: dist
-    TAG: v0.7.0
+    TAG: v0.7.1
 commands:
     build_release:
         desc: |
