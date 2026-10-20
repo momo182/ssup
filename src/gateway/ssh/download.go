@@ -117,19 +117,22 @@ func downloadDir(client *sftp.Client, remotePath, localPath string) error {
 			if err != nil {
 				return fmt.Errorf("failed to open remote file %s: %v", remoteFilePath, err)
 			}
-			defer remoteFile.Close()
 
 			// Create local file
 			localFile, err := os.Create(localFilePath)
 			if err != nil {
+				remoteFile.Close()
 				return fmt.Errorf("failed to create local file %s: %v", localFilePath, err)
 			}
-			defer localFile.Close()
 
 			// Copy remote file to local file
 			if _, err := io.Copy(localFile, remoteFile); err != nil {
+				remoteFile.Close()
+				localFile.Close()
 				return fmt.Errorf("failed to copy remote file %s: %v", remoteFilePath, err)
 			}
+			remoteFile.Close()
+			localFile.Close()
 
 			spinner.Success(localFilePath)
 		}
