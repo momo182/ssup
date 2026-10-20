@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/sftp"
 	"github.com/pterm/pterm"
 	"golang.org/x/crypto/ssh"
+	"gomodules.xyz/envsubst"
 )
 
 // Upload local file to remote server
@@ -22,18 +23,48 @@ func (c *RemoteClient) Upload(localPath, remotePath string) error {
 	l := kemba.New("gw::sshclient::Upload").Printf
 	l("uploading files with UI feedback")
 
-	// Replace ~ with home directory.
-	l("inspect if remote PATH starts with ~/")
-	if strings.HasPrefix(remotePath, "~/") {
-		l("yes, it does, removing the ~/")
-		remotePath = strings.Replace(remotePath, "~/", "", 1)
+	// handle the $SUP_HOST env variables, same as Download
+	envs := c.Env.GetStore()
+	if strings.Contains(localPath, "$") {
+		l("processing envsubst for local path: " + localPath)
+		subst, err := envsubst.EvalMap(localPath, envs)
+		if err != nil {
+			return err
+		}
+		l("local path after subst: " + subst)
+		localPath = subst
+	}
+	if strings.Contains(remotePath, "$") {
+		l("processing envsubst for remote path: " + remotePath)
+		subst, err := envsubst.EvalMap(remotePath, envs)
+		if err != nil {
+			return err
+		}
+		l("remote path after subst: " + subst)
+		remotePath = subst
 	}
 
-	l("inspect if local PATH starts with ~/")
-	if strings.HasPrefix(localPath, "~/") {
-		l("yes, it does, replacing the ~/")
-		homeDir := os.Getenv("HOME")
-		localPath = strings.Replace(localPath, "~/", homeDir+"/", 1)
+	// Replace ~ with the remote home directory (same logic as Download).
+	l("inspect if remote PATH starts with ~")
+	if remotePath == "~" {
+		remotePath = c.GetInventory().Home
+	} else if strings.HasPrefix(remotePath, "~/") {
+		remotePath = path.Join(c.GetInventory().Home, remotePath[2:])
+	}
+
+	l("inspect if local PATH starts with ~")
+	if localPath == "~" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		localPath = homeDir
+	} else if strings.HasPrefix(localPath, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		localPath = filepath.Join(homeDir, localPath[2:])
 	}
 
 	fmt.Println("+ upload:")
@@ -152,10 +183,14 @@ func doUpload(client *sftp.Client, localPath, remotePath string, silent bool) er
 	}
 
 	l := kemba.New("gw::sshclient::uploadDir").Printf
-	return filepath.Walk(localPath, func(localFilePath string, info os.FileInfo, err error) error {
-		// spinner init
-		multi := pterm.DefaultMultiPrinter
 
+	// start and stop the multi printer once for the whole walk,
+	// not on every walked file
+	multi := pterm.DefaultMultiPrinter
+	multi.Start()
+	defer multi.Stop()
+
+	return filepath.Walk(localPath, func(localFilePath string, info os.FileInfo, err error) error {
 		// Compute the relative path from the source directory.
 		relPath, err := filepath.Rel(localPath, localFilePath)
 		if err != nil {
@@ -171,9 +206,6 @@ func doUpload(client *sftp.Client, localPath, remotePath string, silent bool) er
 				return err
 			}
 		}
-
-		multi.Start()
-		defer multi.Stop()
 
 		if info.IsDir() {
 			l("inspecting if localPath is a directory")

@@ -128,7 +128,14 @@ func ResolvePath(path string) string {
 		return cliutil.Workdir()
 	}
 
-	if path[:2] == "~/" {
+	if path == "~" {
+		usr, err := user.Current()
+		if err == nil {
+			path = usr.HomeDir
+		}
+	}
+
+	if len(path) >= 2 && path[:2] == "~/" {
 		usr, err := user.Current()
 		if err == nil {
 			path = filepath.Join(usr.HomeDir, path[2:])
